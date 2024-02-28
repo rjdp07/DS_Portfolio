@@ -6,21 +6,30 @@ website:
   title: "Data Science Portolio"
   navbar:
     left:
-      - href: index.qmd
-        text: Home
-      - projects.qmd
+      - text: "Home"
+        file: index.qmd
+      - text: "Projects"
+        file: projects.qmd
     tools:
       - icon: twitter
         href: https://twitter.com/
       - icon: github
         href: https://github.com/rjdp07/DS_Portfolio
+  sidebar:
+    - title: "Projects"
+      style: "docked"
+      contents:
+        - projects.qmd
+        - projects/churn.qmd
+        - projects/causal.qmd
+        - projects/Livestock/livestock.qmd
   page-footer:
     right: "Built with [Quarto](https://quarto.org/)"
     left: "&copy; Copyright 2023, Ray John Dela Peña"
 
 format:
   html:
-    theme: cerulean
+    theme: flatly
     toc: true
 
 editor: source

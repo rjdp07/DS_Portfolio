@@ -1,0 +1,336 @@
+---
+title: "Livestock Pattern Analysis"
+---
+
+## Overview
+
+We are going to analyze the Livestock data downloaded from [Food and Agriculture Organization of the United Nations](https://www.fao.org/faostat/en/#data/EK) website. Below are the questions we are going to answer by using our data.
+
+1.  What Items or Livestock has the highest density for the most recent year by:
+    -   Overall (World wide)
+    -   Region
+2.  What is the trend of total Livestock density for:
+    -   Overall
+    -   Region
+3.  Identify if there is a significant difference in Livestock Density for each Region.
+4.  Determine the Top 10 country with the Highest Livestock Density.
+5.  Create a Shiny Application Time series model that will predict the Livestock Density for a given Livestock Product and Country.
+
+## Data Import and Pre-Process
+
+```{r warning=FALSE, message=FALSE}
+library(tidyverse)
+library(data.table)
+library(countrycode)
+
+livestock_data = fread("Livestock_data.csv") %>% as_tibble()
+
+```
+
+```{r warning=FALSE, message=FALSE}
+
+#Check Dimension of Data
+glimpse(livestock_data)
+#8180 rows and 70 Columns
+```
+
+::: callout-note
+**Data Dictionary**
+
+1.  **Area Code =** Code for the Country
+2.  **Area Code (M49) =** Standard Country or Area Code for Statistical Use
+3.  **Area =** Country Name
+4.  **Item Code =** Code for Livestock Product/Item
+5.  **Item Code (CPC)**= Customs Procedure Code to determine if product is for Import or Export
+6.  **Item** = Name of livestock product
+7.  **Element** = Unit of measurement for Livestock
+8.  **Element Code** = Numeric code for Livestock Unit of Measurement
+9.  **Unit** = Shorthand notation or symbol of Element Column
+10. **Y\<9999\> =** Year
+:::
+
+We need to add a region column for us to answer some of the questions on our list above.
+
+```{r}
+
+livestock_data = livestock_data %>% 
+  mutate(
+    Region = countrycode(
+      sourcevar = Area,
+      origin = "country.name",
+      destination = "continent"
+    )
+  ) %>% 
+  filter(
+    !is.na(Region)
+  )
+
+head(livestock_data)
+```
+
+Now that we have our Region/Continent column we can start answering our questions from the list above
+
+## Questions
+
+### Highest Livestock Density
+
+1.  **Overall**
+
+```{r warning=FALSE, message=FALSE}
+
+livestock_data %>% 
+  filter(Element == "Livestock units per agricultural land area") %>% 
+  group_by(Item) %>% 
+  reframe(
+    Livestock_Density = sum(Y2021, na.rm = TRUE)
+  ) %>% 
+  arrange(desc(Livestock_Density)) %>% 
+  top_n(10) %>% 
+  mutate(
+    Item = reorder(Item, Livestock_Density)
+  ) %>% 
+  ggplot(aes(x = Item, y = Livestock_Density)) +
+  geom_col()+
+  coord_flip()
+
+```
+
+2.  Region
+
+```{r warning=FALSE, message=FALSE}
+livestock_data %>% 
+  filter(Element == "Livestock units per agricultural land area") %>% 
+  group_by(Region, Item) %>% 
+  reframe(
+    Livestock_Density = sum(Y2021, na.rm = TRUE)
+  ) %>% 
+  arrange(desc(Livestock_Density)) %>% 
+  #top_n(10) %>% 
+  mutate(
+    Region = reorder(Region, Livestock_Density)
+  ) %>% 
+  ggplot(aes(x = Region, y = Livestock_Density, fill = Item)) +
+  geom_col()+
+  coord_flip()
+
+```
+
+### Livestock Density Trend
+
+```{r warning=FALSE, message=FALSE}
+
+livestock_data %>% 
+  filter(Element == "Livestock units per agricultural land area") %>% 
+  pivot_longer(-c(1:9,71),names_to = "Year", values_to = "Livestock_Density") %>% 
+  group_by(Year) %>% 
+  reframe(
+    Livestock_Density = sum(Livestock_Density,na.rm = TRUE)
+  ) %>% 
+  mutate(
+    Year = str_remove(Year, "Y"),
+    Year = paste(Year,"01","01",sep = "-"),
+    Year = as.Date(Year)
+  ) %>% 
+  ggplot(aes(x = Year, Livestock_Density,group = 1)) +
+  geom_point()+
+  geom_line()
+
+```
+
+Interesting. There is a sharp dip of Total Livestock Density in Worldwide Level. Let's investigate this further
+
+```{r warning=FALSE, message=FALSE}
+
+livestock_data %>% 
+  filter(Element == "Livestock units per agricultural land area") %>% 
+  pivot_longer(-c(1:9,71),names_to = "Year", values_to = "Livestock_Density") %>% 
+  group_by(Year) %>% 
+  reframe(
+    Livestock_Density = sum(Livestock_Density,na.rm = TRUE)
+  ) %>% 
+  mutate(
+    Year = str_remove(Year, "Y"),
+    Year = paste(Year,"01","01",sep = "-"),
+    Year = as.Date(Year)
+  ) %>% 
+  slice(which.min(Livestock_Density))
+
+
+
+```
+
+The year where we saw the sharp dip is 1961. Let's see what happen on this year by splicing the Livestock computation by region. Maybe we can see a region dropping its Livestock, or maybe we can see that all region will have a sharp dip.
+
+```{r warning=FALSE, message=FALSE}
+
+
+livestock_data %>% 
+  filter(Element == "Livestock units per agricultural land area") %>% 
+  pivot_longer(-c(1:9,71),names_to = "Year", values_to = "Livestock_Density") %>% 
+  group_by(Region,Year) %>% 
+  reframe(
+    Livestock_Density = sum(Livestock_Density,na.rm = TRUE)
+  ) %>% 
+  mutate(
+    Year = str_remove(Year, "Y"),
+    Year = paste(Year,"01","01",sep = "-"),
+    Year = as.Date(Year)
+  ) %>% 
+  ggplot(aes(x = Year, Livestock_Density,group = Region, color = Region)) +
+  geom_point()+
+  geom_line()
+
+
+```
+
+Asia seems to be the driver of that sharp dip we saw from the world level. Lets try to remove Asia from the graph. Looking at the visual, there seems to be a drop on other continent as well. The scale of Asia's Livestock density is making the trend on other continents seem small.
+
+```{r warning=FALSE, message=FALSE}
+
+
+livestock_data %>% 
+  filter(Element == "Livestock units per agricultural land area") %>% 
+  pivot_longer(-c(1:9,71),names_to = "Year", values_to = "Livestock_Density") %>% 
+  filter(Region != "Asia") %>% 
+  group_by(Region,Year) %>% 
+  reframe(
+    Livestock_Density = sum(Livestock_Density,na.rm = TRUE)
+  ) %>% 
+  mutate(
+    Year = str_remove(Year, "Y"),
+    Year = paste(Year,"01","01",sep = "-"),
+    Year = as.Date(Year)
+  ) %>% 
+  ggplot(aes(x = Year, Livestock_Density,group = Region, color = Region)) +
+  geom_point()+
+  geom_line()
+
+
+```
+
+Looks like Asia is really the one causing the dip. Let's try to look at this one level lower.
+
+```{r warning=FALSE, message=FALSE}
+
+livestock_data %>% 
+  filter(Element == "Livestock units per agricultural land area") %>% 
+  pivot_longer(-c(1:9,71),names_to = "Year", values_to = "Livestock_Density") %>% 
+  filter(Region == "Asia") %>% 
+  group_by(Area,Year) %>% 
+  reframe(
+    Livestock_Density = sum(Livestock_Density,na.rm = TRUE)
+  ) %>% 
+  mutate(
+    Year = str_remove(Year, "Y"),
+    Year = paste(Year,"01","01",sep = "-"),
+    Year = as.Date(Year)
+  ) %>% 
+  ggplot(aes(x = Year, Livestock_Density,group = Area, color = Area)) +
+  geom_point(show.legend = FALSE)+
+  geom_line(show.legend = FALSE)
+```
+
+It is hard to identify what country is displaying the sharp dip for 1991. Lets do it using dplyr
+
+```{r warning=FALSE, message=FALSE}
+
+dip_country = livestock_data %>% 
+  filter(Element == "Livestock units per agricultural land area") %>% 
+  pivot_longer(-c(1:9,71),names_to = "Year", values_to = "Livestock_Density") %>% 
+  filter(Region == "Asia") %>% 
+  group_by(Area,Year) %>% 
+  reframe(
+    Livestock_Density = sum(Livestock_Density,na.rm = TRUE)
+  ) %>% 
+  mutate(
+    Year = str_remove(Year, "Y"),
+    Year = paste(Year,"01","01",sep = "-"),
+    Year = as.Date(Year)
+  ) 
+
+dip_country %>% 
+  mutate(
+    LagDiff = c(0,diff(dip_country$Livestock_Density))
+  ) %>% 
+  filter(LagDiff < 0) %>% 
+  filter(LagDiff < -15)
+
+
+
+
+```
+
+We created a new column called LagDiff which is the result of calculating the difference of the current Livestock Density and its previous value. That way, we can see what year and country have the highest negative LagDiff that will indicate a sharp dip.
+
+Looking at the result, we see that its probably **Singapore.** Since Cambodia, China and Sri Lanka's value are all from 1961 which is obviously not the year of Interest for us.
+
+```{r warning=FALSE, message=FALSE}
+
+livestock_data %>% 
+  filter(Element == "Livestock units per agricultural land area") %>% 
+  pivot_longer(-c(1:9,71),names_to = "Year", values_to = "Livestock_Density") %>% 
+  filter(Region == "Asia") %>% 
+  filter(Area == "Singapore") %>% 
+  group_by(Area,Year) %>% 
+  reframe(
+    Livestock_Density = sum(Livestock_Density,na.rm = TRUE)
+  ) %>% 
+  mutate(
+    Year = str_remove(Year, "Y"),
+    Year = paste(Year,"01","01",sep = "-"),
+    Year = as.Date(Year)
+  ) %>% 
+  ggplot(aes(x = Year, Livestock_Density,group = Area, color = Area)) +
+  geom_point(show.legend = FALSE)+
+  geom_line(show.legend = FALSE)
+
+
+```
+
+Singapore is the country influencing the dip at year 1991. Doing a bit of research about this sharp drop, it turns out that the cause of this drop is due to **Mt. Pinatubo's** volcanic eruption in the **Philippines.** Lets add the Philippines on our chart
+
+```{r warning=FALSE, message=FALSE}
+
+livestock_data %>% 
+  filter(Element == "Livestock units per agricultural land area") %>% 
+  pivot_longer(-c(1:9,71),names_to = "Year", values_to = "Livestock_Density") %>% 
+  filter(Region == "Asia") %>% 
+  filter(Area %in% c("Singapore","Philippines") ) %>% 
+  group_by(Area,Year) %>% 
+  reframe(
+    Livestock_Density = sum(Livestock_Density,na.rm = TRUE)
+  ) %>% 
+  mutate(
+    Year = str_remove(Year, "Y"),
+    Year = paste(Year,"01","01",sep = "-"),
+    Year = as.Date(Year)
+  ) %>% 
+  ggplot(aes(x = Year, Livestock_Density,group = Area, color = Area)) +
+  geom_point()+
+  geom_line()
+```
+
+Singapore's Livestock Density value is too high for us to see the variance in Ph's data.
+
+```{r warning=FALSE, message=FALSE}
+
+livestock_data %>% 
+  filter(Element == "Livestock units per agricultural land area") %>% 
+  pivot_longer(-c(1:9,71),names_to = "Year", values_to = "Livestock_Density") %>% 
+  filter(Region == "Asia") %>% 
+  filter(Area %in% c("Philippines") ) %>% 
+  group_by(Area,Year) %>% 
+  reframe(
+    Livestock_Density = sum(Livestock_Density,na.rm = TRUE)
+  ) %>% 
+  mutate(
+    Year = str_remove(Year, "Y"),
+    Year = paste(Year,"01","01",sep = "-"),
+    Year = as.Date(Year)
+  ) %>% 
+  ggplot(aes(x = Year, Livestock_Density,group = Area, color = Area)) +
+  geom_point()+
+  geom_line()
+```
+
+Looks like even before that year, the livestock density for Ph is already low, that's why the decrease in livestock when **Mt. Pinatubo** erupted does not really cause much of change in Ph's Livestock Density
