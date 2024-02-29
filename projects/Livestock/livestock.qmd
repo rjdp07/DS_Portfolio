@@ -22,6 +22,7 @@ We are going to analyze the Livestock data downloaded from [Food and Agriculture
 library(tidyverse)
 library(data.table)
 library(countrycode)
+library(FSA)
 
 livestock_data = fread("Livestock_data.csv") %>% as_tibble()
 
@@ -333,4 +334,90 @@ livestock_data %>%
   geom_line()
 ```
 
-Looks like even before that year, the livestock density for Ph is already low, that's why the decrease in livestock when **Mt. Pinatubo** erupted does not really cause much of change in Ph's Livestock Density
+Looks like even before that year, the livestock density for Ph is already low, that's why the decrease in livestock when **Mt. Pinatubo** erupted does not really cause much of change in Ph's Livestock Density.
+
+### Region Significant Difference
+
+```{r warning=FALSE, message=FALSE}
+
+livestock_by_region = livestock_data %>% 
+  group_by(Region) %>% 
+  reframe(
+    Livestock_Density = sum(Y2021, na.rm = TRUE)
+  )
+
+
+```
+
+```{r warning=FALSE, message=FALSE}
+
+livestock_data %>% 
+  filter(Element == "Livestock units per agricultural land area") %>% 
+  ggplot(aes(x = Region, y = Y2021)) +
+  geom_boxplot()
+```
+
+Before we can use ANOVA check if there is a significant difference on Livestock Density for each Region, we need to determine first if the data on each group is normal.
+
+```{r warning=FALSE, message=FALSE}
+
+livestock_data %>% 
+  filter(Element == "Livestock units per agricultural land area") %>% 
+  filter(Region == "Asia") %>% 
+  filter(!is.na(Y2021)) %>% 
+  pull(Y2021) %>% 
+  shapiro.test()
+
+
+```
+
+Asia's value for Livestock Density is not normal since we have a p.value of less than 0.05
+
+```{r warning=FALSE, message=FALSE}
+livestock_data %>% 
+  filter(Element == "Livestock units per agricultural land area") %>% 
+  filter(Region == "Africa") %>% 
+  filter(!is.na(Y2021)) %>% 
+  pull(Y2021) %>% 
+  shapiro.test()
+
+```
+
+Same for Africa.
+
+```{r warning=FALSE, message=FALSE}
+
+livestock_data %>% 
+  filter(Element == "Livestock units per agricultural land area") %>% 
+  filter(Region == "Europe") %>% 
+  filter(!is.na(Y2021)) %>% 
+  pull(Y2021) %>% 
+  shapiro.test()
+```
+
+Europe is also not normal. At this point, we dont need to check the other 2 Region, since as pre ANOVA's requirement, all group should come from a normal distribution. We can still determine if there is a significant difference among the groups by using a Non-Parametric approach. This approach will not require our data to come from a normal distribution.
+
+```{r warning=FALSE, message=FALSE}
+livestock_region_data = livestock_data %>% 
+  filter(Element == "Livestock units per agricultural land area") %>% 
+  filter(!is.na(Y2021)) %>% 
+  select(Region, Y2021)
+
+livestock_kruskal = kruskal.test(Y2021 ~ Region, data = livestock_region_data )
+livestock_kruskal
+```
+
+We have a p.value of less than 0.05 indicating that we have a significant difference in Livestock Density for each Region. But let us take the test further and identify which among these groups have a significant difference among each other. We will use **Dunn's test** for this task.
+
+```{r warning=FALSE, message=FALSE}
+
+dunn_result = dunnTest(Y2021 ~ Region, data = livestock_region_data)
+
+#Let's filter out those comparison test with an adjusted p.value of greater than 0.05
+
+
+dunn_result$res %>% 
+  filter(P.adj < 0.05)
+```
+
+Checking the result from Dunn's test, it seems that Africa have a significant difference on Livestock Desnity with all other Region in our data set.
