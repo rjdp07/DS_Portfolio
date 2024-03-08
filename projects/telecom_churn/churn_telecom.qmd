@@ -18,6 +18,8 @@ After answering Exploratory Questions we will proceed to create 3 Classification
 library(tidyverse)
 library(tidymodels)
 library(data.table)
+library(rpart)
+library(rpart.plot)
 
 churn_data = fread("churn_data.csv") %>% as_tibble()
 ```
@@ -330,3 +332,172 @@ collect_metrics(churn_cv_fit)
 ```
 
 The result above shows that the performance of our training model is not that far on how our model performs on predicting unseen data from our test data set. This is a good evidence that our training data is not overfitting or capturing noise from our training data set and setting it as a pattern to learn.
+
+## Decision Tree Model with K-Cross Fold Validation
+
+It is good to know that using only our base model, we were able to get an accuracy of 86%, but we wont stop on that point. It is always recommended to check at least 3 modelling algorithm for comparison. For our 2nd model algorithm, we will use Decision Tree with k-Cross Fold Validation.
+
+### Data Split
+
+```{r warning=FALSE, message=FALSE}
+
+
+set.seed(1234)
+colnames(churn_data_model) = str_replace_all(colnames(churn_data_model)," ","_") 
+
+dtree_split = initial_split(churn_data_model)
+dtree_train = training(dtree_split)
+dtree_test = testing(dtree_split)
+
+#Setting up fold value
+dtree_fold = vfold_cv(dtree_train,v = 10)
+```
+
+### Model Recipe and Engine Initialization
+
+```{r warning=FALSE, message=FALSE}
+
+dtree_recipe = recipe(Churn ~ ., data= dtree_train) %>% 
+  step_normalize(all_numeric())
+
+tree_model = decision_tree() %>% 
+  set_engine("rpart") %>% 
+  set_mode("classification")
+
+
+```
+
+### Workflow and Model Fitting
+
+```{r warning=FALSE, message=FALSE}
+
+dtree_wf = workflow() %>% 
+  add_model(tree_model) %>% 
+  add_recipe(dtree_recipe)
+
+set.seed(1120)
+dtree_churn_cv_fit = dtree_wf %>% 
+  fit_resamples(dtree_fold)
+
+collect_metrics(dtree_churn_cv_fit)
+```
+
+So for our training model, our average Accuracy is at 92%. Impressive performance on our train data set. Let's check if what will be the performance of our model on test data set.
+
+### Model Evaluation
+
+```{r}
+
+dtree_fit = dtree_wf %>% 
+  fit(data = dtree_train)
+
+dtree_aug = augment(dtree_fit,dtree_test)
+
+dtree_aug %>% 
+  head()
+```
+
+Let's also take a look on the selected important features of our data.
+
+```{r warning=FALSE, message=FALSE}
+
+tree_plot = dtree_fit %>% 
+  pull_workflow_fit() 
+rpart.plot(tree_plot$fit)
+
+```
+
+```{r warning=FALSE, message=FALSE}
+
+dtree_aug %>% 
+  roc_curve(truth = Churn,.pred_0) %>% 
+  autoplot()
+
+dtree_aug %>% 
+  roc_curve(truth = Churn,.pred_1) %>% 
+  autoplot()
+```
+
+```{r warning=FALSE, message=FALSE}
+
+dtree_testing_pred = predict(dtree_fit, dtree_test) %>% 
+  bind_cols(predict(dtree_fit, dtree_test, type = "prob")) %>% 
+  bind_cols(dtree_test %>% select(Churn))
+
+dtree_testing_pred
+
+dtree_testing_pred %>% 
+  accuracy(truth = Churn, .pred_class)
+```
+
+Amazing! We now have a better performing model by using Decision Tree! Let's try to add one last model. Who know, maybe we can even reach an accuracy rate of 95% right? On our next model we will use XGBoost.
+
+## XGBoost Modelling with Cross-Fold Validation
+
+### Data Split
+
+```{r warning=FALSE, message=FALSE}
+
+xg_split = initial_split(
+  churn_data_model,
+  prop = 3/4,
+  strata = Churn
+)
+
+xg_train = training(xg_split)
+xg_test = testing(xg_split)
+
+xg_cv_fold = vfold_cv(xg_train, v = 10)
+```
+
+### XGBoost Model Specification
+
+```{r warning=FALSE, message=TRUE}
+
+#XGBoost Model Specs
+xgboost_model = boost_tree(
+  mode = "classification",
+  trees = 1000,
+  min_n = tune(),
+  tree_depth = tune(),
+  learn_rate = tune(),
+  loss_reduction = tune()
+) %>% 
+  set_engine("xgboost") %>% 
+  set_mode("classification")
+
+#Grid Specification for Parameters
+xgboos_params = dials::parameters(
+  min_n(),
+    tree_depth(),
+    learn_rate(),
+    loss_reduction()
+)
+
+#Set up Grid Space
+xgboost_grid = dials::grid_max_entropy(
+  xgboos_params,
+  size = 60
+)
+knitr::kable(head(xgboost_grid))
+```
+
+### Define Worklow
+
+```{r message=FALSE, warning=FALSE}
+xgboost_wf = workflow() %>% 
+  add_model(xgboost_model) %>% 
+  add_formula(Churn ~ .)
+```
+
+### Tune the Model
+
+```{r warning=FALSE, message=FALSE}
+xgboost_tuned = tune_grid(
+  object = xgboost_wf,
+  resamples = xg_cv_fold,
+  grid = xgboost_grid,
+  metrics = metric_set(accuracy, roc_auc),
+  control = control_grid(verbose = TRUE)
+)
+```
