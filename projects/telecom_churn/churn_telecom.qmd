@@ -1,0 +1,332 @@
+---
+title: "Telecom Customer Churn Analysis"
+---
+
+**Churn** is the percentage of customers that stop using a service or product over a given period of time. It is an important metric that most of the company is tracking. Analyzing churn will help the organization to identify how huge their churn rate is, what is causing the churn and how can they prevent it from happening.
+
+On this project, we will use Telecom Customer Churn data to answer the following questions:
+
+1.  What is the proportion of Customer that Churned to those who did not?
+2.  Which State has the highest churn rate?
+3.  What attribute is contributing on the probability that a customer will churn?
+
+After answering Exploratory Questions we will proceed to create 3 Classification Model that will predict Churn. We will compare each model and decide which model to use for predicting whether a customer will churn or no.
+
+## Library and Data Import
+
+```{r warning=FALSE, message=FALSE}
+library(tidyverse)
+library(tidymodels)
+library(data.table)
+
+churn_data = fread("churn_data.csv") %>% as_tibble()
+```
+
+## Exploratory Data Analysis
+
+Check Cardinality
+
+```{r warning=FALSE, message=FALSE}
+
+#Check State column 
+churn_data %>% 
+  count(State, sort = TRUE)
+```
+
+```{r warning=FALSE, message=FALSE}
+
+#Check International Plan and Voice Mail Plan
+churn_data %>% 
+  count(`International plan`,sort = TRUE)
+
+churn_data %>% 
+  count(`Voice mail plan`,sort = TRUE)
+```
+
+Majority of customers don't have an International and Voice Mail plan
+
+```{r}
+
+churn_data %>% 
+  filter(`Number vmail messages` != 0) %>% 
+  ggplot(aes(x = `Number vmail messages`)) +
+  geom_histogram()
+```
+
+For the number of vmail messages among those customers that has a Voice mail plan, we can see that most of the count are concentrated on 30 voice mail messages. I filtered out those customers with no voice mail plan to avoid underestimation of our histogram for the customers that has the voice mail plan.
+
+The next numerical columns we will explore are all measure of how many minutes that customer spent for calling during the day, eve, night and international call if the customer has an international call plan.
+
+Let's visualize the distribution for day usage.
+
+```{r message=FALSE, warning=FALSE}
+
+
+churn_data %>% 
+  ggplot(aes(x = `Total day minutes`)) +
+  geom_histogram()
+
+
+```
+
+```{r warning=FALSE, message=FALSE}
+
+churn_data %>% 
+  ggplot(aes(x = `Total day calls`)) +
+  geom_histogram()
+
+```
+
+```{r warning=FALSE, message=FALSE}
+
+churn_data %>% 
+  ggplot(aes(x = `Total day charge`)) +
+  geom_histogram()
+```
+
+```{r}
+
+churn_data %>% 
+  ggplot(aes(x = `Total day minutes`,y = `Total day charge`)) +
+  geom_point()
+```
+
+Almost perfect linear relationship between charge and minutes. This is expected to happen as we will be charge more the longer we use the phone for calls.
+
+```{r}
+
+churn_data %>% 
+  ggplot(aes(x = `Total day calls`, y = `Total day minutes`)) +
+  geom_point()
+```
+
+Total Day Calls column seems to have a different relationship with minutes. This kind of make sense, because the number of calls you make per day doesn't really mean that you will have higher minutes of call. One can make 3 calls in day where in each call lasts for 30 minutes, while another person can make 10 phone calls with each call lasting for only 1 minute.
+
+Let's try to associate our target variable to see what is the difference of Total Day distribution for Customers that Churned and for those who did not.
+
+```{r warning=FALSE, message=FALSE}
+
+churn_data %>% 
+  ggplot(aes(x = `Total day calls`,fill = Churn)) +
+  geom_histogram()
+
+```
+
+As expected, customers that are not using the service for phone calls will tend to just end their subscription. Let's see if this will be the same pattern for minutes and charge.
+
+```{r warning=FALSE, message=FALSE}
+churn_data %>% 
+  ggplot(aes(x = `Total day charge`, fill = Churn)) +
+  geom_histogram()
+```
+
+```{r warning=FALSE, message=FALSE}
+
+churn_data %>% 
+  ggplot(aes(x = `Total day minutes`, fill = Churn)) +
+  geom_histogram()
+```
+
+As expected, minutes and charge exhibits the same behavior for Customers that Churned and did not. Next, let's take a look on eve charge, minutes and calls.
+
+```{r warning=FALSE, message=FALSE}
+
+churn_data %>% 
+  ggplot(aes(x = `Total eve calls`))+
+  geom_histogram()
+
+churn_data %>% 
+  ggplot(aes(x = `Total eve calls`, fill = Churn))+
+  geom_histogram()
+```
+
+```{r warning=FALSE, message=FALSE}
+
+churn_data %>% 
+  ggplot(aes(x = `Total eve charge`))+
+  geom_histogram()
+
+churn_data %>% 
+  ggplot(aes(x = `Total eve charge`, fill = Churn))+
+  geom_histogram()
+  
+```
+
+```{r warning=FALSE,message=FALSE}
+
+churn_data %>% 
+  ggplot(aes(x = `Total eve minutes`))+
+  geom_histogram()
+
+churn_data %>% 
+  ggplot(aes(x = `Total eve minutes`, fill = Churn))+
+  geom_histogram()
+```
+
+As we can see from the visuals above, the distribution with and without filter follows the same pattern from the day calls, minutes and charge. Lets continue to explore the distribution for night and international minutes, calls and charge
+
+```{r warning=FALSE, message=FALSE}
+
+churn_data %>% 
+  ggplot(aes(x = `Total night calls`, fill = Churn))+
+  geom_histogram()
+
+churn_data %>% 
+  ggplot(aes(x = `Total night minutes`, fill = Churn))+
+  geom_histogram()
+
+churn_data %>% 
+  ggplot(aes(x = `Total night charge`, fill = Churn))+
+  geom_histogram()
+```
+
+```{r warning=FALSE, message=FALSE}
+
+churn_data %>% 
+  ggplot(aes(x = `Total intl calls`, fill = Churn)) +
+  geom_histogram()
+
+churn_data %>% 
+  ggplot(aes(x = `Total intl minutes`, fill = Churn)) +
+  geom_histogram()
+
+churn_data %>% 
+  ggplot(aes(x = `Total intl charge`, fill = Churn)) +
+  geom_histogram()
+```
+
+Total International calls is different from the rest of distribution since it is skewed. Finally, let's check our service calls column.
+
+```{r warning=FALSE, message=FALSE}
+churn_data %>% 
+  ggplot(aes(x = `Customer service calls`, fill = Churn)) +
+  geom_histogram()
+  
+```
+
+## 
+
+## Data Split
+
+Now that we have some assumptions from the EDA we did, we can start preparing our data by splitting it into test and train data set. This is a vital part of any machine learning model project. This will allow our model to learn the pattern of our data and use that to predict unseen data coming from our test data set.
+
+```{r warning=FALSE, message=FALSE}
+set.seed(222)
+
+#Lets Remove Account Length and Area code from our data set
+churn_data_model = churn_data %>% 
+  select(-c(`Account length`,`Area code`)) %>% 
+  mutate(
+    Churn = ifelse(Churn,1,0) %>% as.factor()
+  )
+
+data_split = initial_split(churn_data_model, prop = 3/4)
+train_data = training(data_split)
+test_data = testing(data_split)
+```
+
+That's it! We now have 2 sets of data for our modelling. Now we need to create a recipe for basic logistic regression.
+
+## Data Modelling
+
+For tidymodels ecosystem, the first step in data modelling is creating your model recipe. Here in our case, we will predict Churn based on all available variables using our train data. Then we will initialize our model engine which GLM since we will use Logistic Regression for our base model. Once we are done with our recipe and engine model, we will add those 2 on our workflow to prepare it for the actual model fitting.
+
+```{r warning=FALSE, message=FALSE}
+
+#Create Recipe
+churn_recipe = recipe(Churn ~ ., data = train_data)
+
+logit_model = logistic_reg() %>% 
+  set_engine("glm")
+
+churn_workflow = workflow() %>% 
+  add_model(logit_model) %>% 
+  add_recipe(churn_recipe)
+
+churn_fit = churn_workflow %>% 
+  fit(data = train_data)
+```
+
+We can check the result of our base model by using the function `extract_fit_parsnip` and `tidy`.
+
+```{r warning=FALSE, message=FALSE}
+
+churn_fit %>% 
+  extract_fit_parsnip() %>% 
+  tidy() %>% 
+  filter(p.value < 0.05)
+```
+
+## Data Prediction and Evaluation
+
+Now that we have our model trained, we can proceed on predicting unseen data using our test data set.
+
+```{r warning=FALSE, message=FALSE}
+
+predict(churn_fit, test_data) %>% 
+  count(.pred_class)
+```
+
+Our Model predicted 788 customers that did not churn and 46 that did churn. We can view it another format where we can check the predicted class probabilities for the Churn column.
+
+```{r warning=FALSE, message=FALSE}
+churn_aug = augment(churn_fit,test_data)
+
+churn_aug %>% 
+  head()
+```
+
+To start our model evaluation, Let's generate an ROC curve.
+
+```{r warning=FALSE, message=FALSE}
+
+churn_aug %>% 
+  roc_curve(truth = Churn,.pred_0) %>% 
+  autoplot()
+
+
+```
+
+Calculate Accuracy of our model
+
+```{r warning=FALSE, message=FALSE}
+
+churn_testing_pred = predict(churn_fit, test_data) %>% 
+  bind_cols(predict(churn_fit, test_data, type = "prob")) %>% 
+  bind_cols(test_data %>% select(Churn))
+
+churn_testing_pred
+```
+
+```{r warning=FALSE, message=FALSE}
+churn_testing_pred %>% 
+  accuracy(truth = Churn, .pred_class)
+```
+
+Not bad! We got an accuracy rate of 86% for base model without even doing extensive data pre-processing. But what we did from the script above is a basic data split and modelling. Now let's try enhancing our data split process by doing a K-Fold Cross Validation and see if it will help our model to perform better.
+
+```{r warning=FALSE, message=FALSE}
+
+set.seed(345)
+
+folds = vfold_cv(train_data, v = 10)
+folds
+```
+
+Lets create a new workflow for this approach
+
+```{r warning=FALSE, message=FALSE}
+
+churn_Cv_wf = workflow() %>% 
+  add_model(logit_model) %>% 
+  add_formula(Churn ~ .) 
+
+set.seed(456)
+
+churn_cv_fit = churn_Cv_wf %>% 
+  fit_resamples(folds)
+
+collect_metrics(churn_cv_fit)
+```
+
+The result above shows that the performance of our training model is not that far on how our model performs on predicting unseen data from our test data set. This is a good evidence that our training data is not overfitting or capturing noise from our training data set and setting it as a pattern to learn.

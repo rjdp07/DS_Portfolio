@@ -20,7 +20,7 @@ website:
       style: "docked"
       contents:
         - projects.qmd
-        - projects/churn.qmd
+        - projects/telecom_churn/churn_telecom.qmd
         - projects/causal.qmd
         - projects/Livestock/livestock.qmd
   page-footer:

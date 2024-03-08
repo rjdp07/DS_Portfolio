@@ -155,8 +155,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../projects/churn.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Churn Analytics and Prediction</span></a>
+  <a href="../../projects/telecom_churn/churn_telecom.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Telecom Customer Churn Analysis</span></a>
   </div>
 </li>
         <li class="sidebar-item">
@@ -188,6 +188,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#highest-livestock-density" id="toc-highest-livestock-density" class="nav-link" data-scroll-target="#highest-livestock-density">Highest Livestock Density</a></li>
   <li><a href="#livestock-density-trend" id="toc-livestock-density-trend" class="nav-link" data-scroll-target="#livestock-density-trend">Livestock Density Trend</a></li>
   <li><a href="#region-significant-difference" id="toc-region-significant-difference" class="nav-link" data-scroll-target="#region-significant-difference">Region Significant Difference</a></li>
+  <li><a href="#top-10-country-with-highest-livestock-density" id="toc-top-10-country-with-highest-livestock-density" class="nav-link" data-scroll-target="#top-10-country-with-highest-livestock-density">Top 10 Country with Highest Livestock Density</a></li>
+  <li><a href="#time-series-modelling" id="toc-time-series-modelling" class="nav-link" data-scroll-target="#time-series-modelling">Time Series Modelling</a></li>
   </ul></li>
   </ul>
 </nav>
@@ -228,7 +230,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </ul></li>
 <li>Identify if there is a significant difference in Livestock Density for each Region.</li>
 <li>Determine the Top 10 country with the Highest Livestock Density.</li>
-<li>Create a Shiny Application Time series model that will predict the Livestock Density for a given Livestock Product and Country.</li>
+<li>Create a Time Series Model for:
+<ul>
+<li>The top 3 Livestock Product of the Top 1 Country by Livestock Density for each Region</li>
+</ul></li>
 </ol>
 </section>
 <section id="data-import-and-pre-process" class="level2">
@@ -238,8 +243,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(data.table)</span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(countrycode)</span>
 <span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(FSA)</span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>livestock_data <span class="ot">=</span> <span class="fu">fread</span>(<span class="st">"Livestock_data.csv"</span>) <span class="sc">%&gt;%</span> <span class="fu">as_tibble</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(forecast)</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>livestock_data <span class="ot">=</span> <span class="fu">fread</span>(<span class="st">"Livestock_data.csv"</span>) <span class="sc">%&gt;%</span> <span class="fu">as_tibble</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co">#Check Dimension of Data</span></span>
@@ -753,6 +759,261 @@ Kruskal-Wallis chi-squared = 35.535, df = 4, p-value = 3.606e-07</code></pre>
 </div>
 </div>
 <p>Checking the result from Dunn’s test, it seems that Africa have a significant difference on Livestock Desnity with all other Region in our data set.</p>
+</section>
+<section id="top-10-country-with-highest-livestock-density" class="level3">
+<h3 class="anchored" data-anchor-id="top-10-country-with-highest-livestock-density">Top 10 Country with Highest Livestock Density</h3>
+<p>We can easily extract this information with a simple code using dplyr.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb34"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a>livestock_data <span class="sc">%&gt;%</span> </span>
+<span id="cb34-2"><a href="#cb34-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(Element <span class="sc">==</span> <span class="st">"Livestock units per agricultural land area"</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb34-3"><a href="#cb34-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(Area, Y2021) <span class="sc">%&gt;%</span> </span>
+<span id="cb34-4"><a href="#cb34-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(Y2021)) <span class="sc">%&gt;%</span> </span>
+<span id="cb34-5"><a href="#cb34-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(Area) <span class="sc">%&gt;%</span> </span>
+<span id="cb34-6"><a href="#cb34-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">reframe</span>(</span>
+<span id="cb34-7"><a href="#cb34-7" aria-hidden="true" tabindex="-1"></a>    <span class="at">Livestock_Density =</span> <span class="fu">sum</span>(Y2021, <span class="at">na.rm =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb34-8"><a href="#cb34-8" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span> </span>
+<span id="cb34-9"><a href="#cb34-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(<span class="fu">desc</span>(Livestock_Density)) <span class="sc">%&gt;%</span> </span>
+<span id="cb34-10"><a href="#cb34-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">top_n</span>(<span class="dv">10</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 10 × 2
+   Area                             Livestock_Density
+   &lt;chr&gt;                                        &lt;dbl&gt;
+ 1 Singapore                                   119.  
+ 2 China, Hong Kong SAR                         37.2 
+ 3 Brunei Darussalam                            32.7 
+ 4 Trinidad and Tobago                          16.4 
+ 5 Barbados                                     13.1 
+ 6 Micronesia (Federated States of)             10.8 
+ 7 Republic of Korea                            10.7 
+ 8 Kuwait                                       10.2 
+ 9 Qatar                                        10.2 
+10 Netherlands (Kingdom of the)                  9.95</code></pre>
+</div>
+</div>
+<p>We can also check the top 10 for each Region and visualize it for better view.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb36"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a>livestock_data <span class="sc">%&gt;%</span> </span>
+<span id="cb36-2"><a href="#cb36-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(Element <span class="sc">==</span> <span class="st">"Livestock units per agricultural land area"</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb36-3"><a href="#cb36-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(Y2021)) <span class="sc">%&gt;%</span> </span>
+<span id="cb36-4"><a href="#cb36-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(Region, Area) <span class="sc">%&gt;%</span> </span>
+<span id="cb36-5"><a href="#cb36-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(</span>
+<span id="cb36-6"><a href="#cb36-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">Livestock_Density =</span> <span class="fu">sum</span>(Y2021, <span class="at">na.rm =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb36-7"><a href="#cb36-7" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span> </span>
+<span id="cb36-8"><a href="#cb36-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">top_n</span>(<span class="dv">10</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb36-9"><a href="#cb36-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ungroup</span>() <span class="sc">%&gt;%</span> </span>
+<span id="cb36-10"><a href="#cb36-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb36-11"><a href="#cb36-11" aria-hidden="true" tabindex="-1"></a>    <span class="at">Area =</span> <span class="fu">reorder</span>(Area, Livestock_Density)</span>
+<span id="cb36-12"><a href="#cb36-12" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span> </span>
+<span id="cb36-13"><a href="#cb36-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> Area, <span class="at">y =</span> Livestock_Density, <span class="at">fill =</span> Region)) <span class="sc">+</span></span>
+<span id="cb36-14"><a href="#cb36-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_col</span>(<span class="at">show.legend =</span> <span class="cn">FALSE</span>) <span class="sc">+</span></span>
+<span id="cb36-15"><a href="#cb36-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span>Region, <span class="at">scales =</span> <span class="st">"free"</span>) <span class="sc">+</span></span>
+<span id="cb36-16"><a href="#cb36-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_x_discrete</span>(<span class="at">label =</span> <span class="cf">function</span>(x) <span class="fu">abbreviate</span>(x, <span class="at">minlength =</span> <span class="dv">7</span>)) <span class="sc">+</span></span>
+<span id="cb36-17"><a href="#cb36-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">coord_flip</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="livestock_files/figure-html/unnamed-chunk-23-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb37"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a>livestock_data <span class="sc">%&gt;%</span> </span>
+<span id="cb37-2"><a href="#cb37-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(Element <span class="sc">==</span> <span class="st">"Livestock units per agricultural land area"</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb37-3"><a href="#cb37-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(Y2021)) <span class="sc">%&gt;%</span> </span>
+<span id="cb37-4"><a href="#cb37-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(Region, Area) <span class="sc">%&gt;%</span> </span>
+<span id="cb37-5"><a href="#cb37-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(</span>
+<span id="cb37-6"><a href="#cb37-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">Livestock_Density =</span> <span class="fu">sum</span>(Y2021, <span class="at">na.rm =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb37-7"><a href="#cb37-7" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span> </span>
+<span id="cb37-8"><a href="#cb37-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">top_n</span>(<span class="dv">10</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb37-9"><a href="#cb37-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(Region <span class="sc">==</span> <span class="st">"Africa"</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb37-10"><a href="#cb37-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(<span class="fu">desc</span>(Livestock_Density))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>`summarise()` has grouped output by 'Region'. You can override using the
+`.groups` argument.
+Selecting by Livestock_Density</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 10 × 3
+# Groups:   Region [1]
+   Region Area                     Livestock_Density
+   &lt;chr&gt;  &lt;chr&gt;                                &lt;dbl&gt;
+ 1 Africa Seychelles                            4.3 
+ 2 Africa Mauritius                             4.13
+ 3 Africa Ethiopia                              3.68
+ 4 Africa Egypt                                 3.67
+ 5 Africa Burkina Faso                          2.13
+ 6 Africa Kenya                                 2.13
+ 7 Africa Guinea-Bissau                         2.1 
+ 8 Africa Uganda                                2.04
+ 9 Africa Cabo Verde                            1.98
+10 Africa Central African Republic              1.97</code></pre>
+</div>
+</div>
+</section>
+<section id="time-series-modelling" class="level3">
+<h3 class="anchored" data-anchor-id="time-series-modelling">Time Series Modelling</h3>
+<p>Let’s start by creating a time series model for Africa’s highest Livestock Density Country, Seychelles</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb40"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb40-1"><a href="#cb40-1" aria-hidden="true" tabindex="-1"></a><span class="co">#Let's identify first the top 3 Livestock Product for Seychelles</span></span>
+<span id="cb40-2"><a href="#cb40-2" aria-hidden="true" tabindex="-1"></a>livestock_data <span class="sc">%&gt;%</span> </span>
+<span id="cb40-3"><a href="#cb40-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(Region <span class="sc">==</span> <span class="st">"Africa"</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb40-4"><a href="#cb40-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(Element <span class="sc">==</span> <span class="st">"Livestock units per agricultural land area"</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb40-5"><a href="#cb40-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(Area <span class="sc">==</span> <span class="st">"Seychelles"</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb40-6"><a href="#cb40-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(Item) <span class="sc">%&gt;%</span> </span>
+<span id="cb40-7"><a href="#cb40-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">reframe</span>(</span>
+<span id="cb40-8"><a href="#cb40-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">Livestock_Density =</span> <span class="fu">sum</span>(Y2021, <span class="at">na.rm =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb40-9"><a href="#cb40-9" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span> </span>
+<span id="cb40-10"><a href="#cb40-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(<span class="fu">desc</span>(Livestock_Density))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 7 × 2
+  Item                  Livestock_Density
+  &lt;chr&gt;                             &lt;dbl&gt;
+1 Major livestock types              1.92
+2 Chickens                           0.84
+3 Swine / pigs                       0.62
+4 Goats                              0.37
+5 Sheep and Goats                    0.37
+6 Cattle                             0.09
+7 Cattle and Buffaloes               0.09</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb42"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb42-1"><a href="#cb42-1" aria-hidden="true" tabindex="-1"></a><span class="co">#Top 3 Livestock Item for Seychelles is Major Livestock Types, Chickens and Swine/Pigs</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb43"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb43-1"><a href="#cb43-1" aria-hidden="true" tabindex="-1"></a><span class="co">#Lets Filter the Major Livestock Types first</span></span>
+<span id="cb43-2"><a href="#cb43-2" aria-hidden="true" tabindex="-1"></a>africa_1 <span class="ot">=</span> livestock_data <span class="sc">%&gt;%</span> </span>
+<span id="cb43-3"><a href="#cb43-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(Region <span class="sc">==</span> <span class="st">"Africa"</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb43-4"><a href="#cb43-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(Element <span class="sc">==</span> <span class="st">"Livestock units per agricultural land area"</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb43-5"><a href="#cb43-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(Area <span class="sc">==</span> <span class="st">"Seychelles"</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb43-6"><a href="#cb43-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(Area,Item,<span class="fu">c</span>(<span class="dv">10</span><span class="sc">:</span><span class="dv">70</span>)) <span class="sc">%&gt;%</span> </span>
+<span id="cb43-7"><a href="#cb43-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_longer</span>(<span class="sc">-</span><span class="fu">c</span>(Area,Item),<span class="at">names_to =</span> <span class="st">"Year"</span>, <span class="at">values_to =</span> <span class="st">"Livestock_Density"</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb43-8"><a href="#cb43-8" aria-hidden="true" tabindex="-1"></a>   <span class="fu">mutate</span>(</span>
+<span id="cb43-9"><a href="#cb43-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">Year =</span> <span class="fu">str_remove</span>(Year, <span class="st">"Y"</span>),</span>
+<span id="cb43-10"><a href="#cb43-10" aria-hidden="true" tabindex="-1"></a>    <span class="at">Year =</span> <span class="fu">paste</span>(Year,<span class="st">"01"</span>,<span class="st">"01"</span>,<span class="at">sep =</span> <span class="st">"-"</span>),</span>
+<span id="cb43-11"><a href="#cb43-11" aria-hidden="true" tabindex="-1"></a>    <span class="at">Year =</span> <span class="fu">as.Date</span>(Year)</span>
+<span id="cb43-12"><a href="#cb43-12" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span> </span>
+<span id="cb43-13"><a href="#cb43-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(Area,Item, Year) <span class="sc">%&gt;%</span> </span>
+<span id="cb43-14"><a href="#cb43-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">reframe</span>(</span>
+<span id="cb43-15"><a href="#cb43-15" aria-hidden="true" tabindex="-1"></a>    <span class="at">Livestock_Density =</span> <span class="fu">sum</span>(Livestock_Density, <span class="at">na.rm =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb43-16"><a href="#cb43-16" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb43-17"><a href="#cb43-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb43-18"><a href="#cb43-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb43-19"><a href="#cb43-19" aria-hidden="true" tabindex="-1"></a>africa_1 <span class="sc">%&gt;%</span> </span>
+<span id="cb43-20"><a href="#cb43-20" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(Item) <span class="sc">%&gt;%</span> </span>
+<span id="cb43-21"><a href="#cb43-21" aria-hidden="true" tabindex="-1"></a>  <span class="fu">reframe</span>(</span>
+<span id="cb43-22"><a href="#cb43-22" aria-hidden="true" tabindex="-1"></a>    <span class="at">Livestock_Density =</span> <span class="fu">sum</span>(Livestock_Density,<span class="at">na.rm =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb43-23"><a href="#cb43-23" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span> </span>
+<span id="cb43-24"><a href="#cb43-24" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(<span class="fu">desc</span>(Livestock_Density))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 7 × 2
+  Item                  Livestock_Density
+  &lt;chr&gt;                             &lt;dbl&gt;
+1 Major livestock types             91.2 
+2 Chickens                          41.4 
+3 Swine / pigs                      30.5 
+4 Cattle                            10.9 
+5 Cattle and Buffaloes              10.9 
+6 Goats                              8.52
+7 Sheep and Goats                    8.52</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb45"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb45-1"><a href="#cb45-1" aria-hidden="true" tabindex="-1"></a>africa_1 <span class="sc">%&gt;%</span> </span>
+<span id="cb45-2"><a href="#cb45-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(Item <span class="sc">%in%</span> <span class="fu">c</span>(<span class="st">"Major livestock types"</span>,<span class="st">"Chickens"</span>,<span class="st">"Swine / pigs"</span>)) <span class="sc">%&gt;%</span> </span>
+<span id="cb45-3"><a href="#cb45-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> Year,<span class="at">y =</span> Livestock_Density, <span class="at">color =</span> Item, <span class="at">group =</span> Item)) <span class="sc">+</span></span>
+<span id="cb45-4"><a href="#cb45-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>() <span class="sc">+</span></span>
+<span id="cb45-5"><a href="#cb45-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_line</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="livestock_files/figure-html/unnamed-chunk-27-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<p>We now know what are the top 3 Livestock Item for Seychelles in Africa from 1960 to 2021. We will then create a time series model for each livestock Item and compare the ratio of these 3 throughout each time period.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb46"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb46-1"><a href="#cb46-1" aria-hidden="true" tabindex="-1"></a><span class="co">#Lets create a time series object first</span></span>
+<span id="cb46-2"><a href="#cb46-2" aria-hidden="true" tabindex="-1"></a>livestock_ts_major <span class="ot">=</span> africa_1 <span class="sc">%&gt;%</span> </span>
+<span id="cb46-3"><a href="#cb46-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(Item <span class="sc">==</span> <span class="st">"Major livestock types"</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb46-4"><a href="#cb46-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(Year, Livestock_Density)</span>
+<span id="cb46-5"><a href="#cb46-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb46-6"><a href="#cb46-6" aria-hidden="true" tabindex="-1"></a>livestock_ts_obj <span class="ot">=</span> <span class="fu">ts</span>(livestock_ts_major<span class="sc">$</span>Livestock_Density, <span class="at">start =</span> <span class="dv">1961</span>, <span class="at">frequency =</span> <span class="dv">1</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Transform our Time Series data to Log Form to remove fluctuations</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb47"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb47-1"><a href="#cb47-1" aria-hidden="true" tabindex="-1"></a>log_ls_ts <span class="ot">=</span> <span class="fu">log</span>(livestock_ts_obj)</span>
+<span id="cb47-2"><a href="#cb47-2" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(log_ls_ts)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="livestock_files/figure-html/unnamed-chunk-29-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<p>We can see that there is an upward trend for our Time Series Data.</p>
+<p>For creating the Time Series Model, we will use the function <code>auto.arima</code>. This will help us to identify the best configuration for our ARIMA model.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb48"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb48-1"><a href="#cb48-1" aria-hidden="true" tabindex="-1"></a>arima_model <span class="ot">=</span> <span class="fu">auto.arima</span>(log_ls_ts)</span>
+<span id="cb48-2"><a href="#cb48-2" aria-hidden="true" tabindex="-1"></a>arima_model</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Series: log_ls_ts 
+ARIMA(2,1,2) with drift 
+
+Coefficients:
+         ar1      ar2      ma1     ma2   drift
+      0.2600  -0.7282  -0.4762  0.5582  0.0281
+s.e.  0.2804   0.1492   0.3711  0.1959  0.0130
+
+sigma^2 = 0.02032:  log likelihood = 34.13
+AIC=-56.27   AICc=-54.68   BIC=-43.7</code></pre>
+</div>
+</div>
+<p>Now that we are done with the Model, let’s explore our ACF and PACF plots</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb50"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb50-1"><a href="#cb50-1" aria-hidden="true" tabindex="-1"></a><span class="fu">acf</span>(arima_model<span class="sc">$</span>residuals, <span class="at">main =</span> <span class="st">"Correlogram"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="livestock_files/figure-html/unnamed-chunk-31-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb51"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb51-1"><a href="#cb51-1" aria-hidden="true" tabindex="-1"></a><span class="fu">pacf</span>(arima_model<span class="sc">$</span>residuals, <span class="at">main =</span> <span class="st">"Partial Correlogram"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="livestock_files/figure-html/unnamed-chunk-32-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<p>Testing Significance of Residuals using Ljung-Box Test</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb52"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb52-1"><a href="#cb52-1" aria-hidden="true" tabindex="-1"></a><span class="fu">Box.test</span>(arima_model<span class="sc">$</span>residuals, <span class="at">lag =</span> <span class="dv">20</span>, <span class="at">type =</span> <span class="st">"Ljung-Box"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+    Box-Ljung test
+
+data:  arima_model$residuals
+X-squared = 8.9967, df = 20, p-value = 0.9829</code></pre>
+</div>
+</div>
+<p>Since our pvalue is greater than 0.05, we can conclude that there is no evidence that there is a Non-Zero Autocorrelation in our forecast error from Lags 1 to 20.</p>
+<p>Next we will generate a Residual Plot. This will help us confirm if our model is correct or if we need to consider other modelling algorithm.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb54"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb54-1"><a href="#cb54-1" aria-hidden="true" tabindex="-1"></a><span class="fu">hist</span>(arima_model<span class="sc">$</span>residuals,</span>
+<span id="cb54-2"><a href="#cb54-2" aria-hidden="true" tabindex="-1"></a>     <span class="at">col =</span> <span class="st">"red"</span>,</span>
+<span id="cb54-3"><a href="#cb54-3" aria-hidden="true" tabindex="-1"></a>     <span class="at">xlab =</span> <span class="st">"Error"</span>,</span>
+<span id="cb54-4"><a href="#cb54-4" aria-hidden="true" tabindex="-1"></a>     <span class="at">main =</span> <span class="st">"Histogram of Residuals"</span>,</span>
+<span id="cb54-5"><a href="#cb54-5" aria-hidden="true" tabindex="-1"></a>     <span class="at">freq =</span> <span class="cn">FALSE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="livestock_files/figure-html/unnamed-chunk-34-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<p>As we can see, most of the values for Error are concentrated on 0.</p>
+<p>Finally, we can now start to forecast using our ARIMA model. On our script below we will try to predict the Major Livestock Density for the next 5 years</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb55"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb55-1"><a href="#cb55-1" aria-hidden="true" tabindex="-1"></a>model_forecast <span class="ot">=</span> <span class="fu">forecast</span>(arima_model, <span class="dv">5</span>)</span>
+<span id="cb55-2"><a href="#cb55-2" aria-hidden="true" tabindex="-1"></a><span class="fu">autoplot</span>(model_forecast)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="livestock_files/figure-html/unnamed-chunk-35-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<p>Our model captured the upward trend of our Log Transformed Time Series Data. The dark and light blue region indicates the confidence interval of our prediction or forecast. Notice that our model did not capture any fluctuation from our original data, that is because our data does not have a seasonality component. The up and down movement we are seeing may be due to noise but not enough for our model to consider it as a pattern for forecasting.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb56"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb56-1"><a href="#cb56-1" aria-hidden="true" tabindex="-1"></a><span class="fu">accuracy</span>(model_forecast)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>                       ME      RMSE        MAE       MPE     MAPE      MASE
+Training set -0.000373242 0.1353569 0.09882457 -3.725761 33.46294 0.9112668
+                   ACF1
+Training set 0.02882789</code></pre>
+</div>
+</div>
+<p>Running <code>accuracy</code> function tells us how well our model is performing. The rmse value tells us the root mean squared error of our model. Our target for this metric is for it to be lower when compared to other model performance evaluation.</p>
 
 
 </section>

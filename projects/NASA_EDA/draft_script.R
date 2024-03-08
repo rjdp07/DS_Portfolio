@@ -83,9 +83,9 @@ tidy_nasa_eda %>%
   coord_flip()
 
 
-
-
-
-
+churn_data_1 = fread("projects//telecom_churn//churn-bigml-20.csv") %>% as_tibble()
+churn_data_2 = fread("projects//telecom_churn//churn-bigml-80.csv") %>% as_tibble()
+churn_main_data = bind_rows(churn_data_1,churn_data_2)
+fwrite(churn_main_data,"projects//telecom_churn//churn_data.csv")
 
 

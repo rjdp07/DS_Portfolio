@@ -14,7 +14,8 @@ We are going to analyze the Livestock data downloaded from [Food and Agriculture
     -   Region
 3.  Identify if there is a significant difference in Livestock Density for each Region.
 4.  Determine the Top 10 country with the Highest Livestock Density.
-5.  Create a Shiny Application Time series model that will predict the Livestock Density for a given Livestock Product and Country.
+5.  Create a Time Series Model for:
+    -   The top 3 Livestock Product of the Top 1 Country by Livestock Density for each Region
 
 ## Data Import and Pre-Process
 
@@ -23,6 +24,7 @@ library(tidyverse)
 library(data.table)
 library(countrycode)
 library(FSA)
+library(forecast)
 
 livestock_data = fread("Livestock_data.csv") %>% as_tibble()
 
@@ -421,3 +423,206 @@ dunn_result$res %>%
 ```
 
 Checking the result from Dunn's test, it seems that Africa have a significant difference on Livestock Desnity with all other Region in our data set.
+
+### Top 10 Country with Highest Livestock Density
+
+We can easily extract this information with a simple code using dplyr.
+
+```{r warning=FALSE, message=FALSE}
+
+livestock_data %>% 
+  filter(Element == "Livestock units per agricultural land area") %>% 
+  select(Area, Y2021) %>% 
+  filter(!is.na(Y2021)) %>% 
+  group_by(Area) %>% 
+  reframe(
+    Livestock_Density = sum(Y2021, na.rm = TRUE)
+  ) %>% 
+  arrange(desc(Livestock_Density)) %>% 
+  top_n(10)
+
+```
+
+We can also check the top 10 for each Region and visualize it for better view.
+
+```{r warning=FALSE, message=FALSE}
+
+livestock_data %>% 
+  filter(Element == "Livestock units per agricultural land area") %>% 
+  filter(!is.na(Y2021)) %>% 
+  group_by(Region, Area) %>% 
+  summarise(
+    Livestock_Density = sum(Y2021, na.rm = TRUE)
+  ) %>% 
+  top_n(10) %>% 
+  ungroup() %>% 
+  mutate(
+    Area = reorder(Area, Livestock_Density)
+  ) %>% 
+  ggplot(aes(x = Area, y = Livestock_Density, fill = Region)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~Region, scales = "free") +
+  scale_x_discrete(label = function(x) abbreviate(x, minlength = 7)) +
+  coord_flip()
+```
+
+```{r}
+
+livestock_data %>% 
+  filter(Element == "Livestock units per agricultural land area") %>% 
+  filter(!is.na(Y2021)) %>% 
+  group_by(Region, Area) %>% 
+  summarise(
+    Livestock_Density = sum(Y2021, na.rm = TRUE)
+  ) %>% 
+  top_n(10) %>% 
+  filter(Region == "Africa") %>% 
+  arrange(desc(Livestock_Density))
+```
+
+### Time Series Modelling
+
+Let's start by creating a time series model for Africa's highest Livestock Density Country, Seychelles
+
+```{r warning=FALSE, message=FALSE}
+
+#Let's identify first the top 3 Livestock Product for Seychelles
+livestock_data %>% 
+  filter(Region == "Africa") %>% 
+  filter(Element == "Livestock units per agricultural land area") %>% 
+  filter(Area == "Seychelles") %>% 
+  group_by(Item) %>% 
+  reframe(
+    Livestock_Density = sum(Y2021, na.rm = TRUE)
+  ) %>% 
+  arrange(desc(Livestock_Density))
+
+
+#Top 3 Livestock Item for Seychelles is Major Livestock Types, Chickens and Swine/Pigs
+
+
+
+```
+
+```{r warning=FALSE, message=FALSE}
+#Lets Filter the Major Livestock Types first
+africa_1 = livestock_data %>% 
+  filter(Region == "Africa") %>% 
+  filter(Element == "Livestock units per agricultural land area") %>% 
+  filter(Area == "Seychelles") %>% 
+  select(Area,Item,c(10:70)) %>% 
+  pivot_longer(-c(Area,Item),names_to = "Year", values_to = "Livestock_Density") %>% 
+   mutate(
+    Year = str_remove(Year, "Y"),
+    Year = paste(Year,"01","01",sep = "-"),
+    Year = as.Date(Year)
+  ) %>% 
+  group_by(Area,Item, Year) %>% 
+  reframe(
+    Livestock_Density = sum(Livestock_Density, na.rm = TRUE)
+  )
+
+
+africa_1 %>% 
+  group_by(Item) %>% 
+  reframe(
+    Livestock_Density = sum(Livestock_Density,na.rm = TRUE)
+  ) %>% 
+  arrange(desc(Livestock_Density))
+  
+
+
+
+```
+
+```{r warning=FALSE, message=FALSE}
+
+africa_1 %>% 
+  filter(Item %in% c("Major livestock types","Chickens","Swine / pigs")) %>% 
+  ggplot(aes(x = Year,y = Livestock_Density, color = Item, group = Item)) +
+  geom_point() +
+  geom_line()
+
+```
+
+We now know what are the top 3 Livestock Item for Seychelles in Africa from 1960 to 2021. We will then create a time series model for each livestock Item and compare the ratio of these 3 throughout each time period.
+
+```{r warning=FALSE, message=FALSE}
+
+#Lets create a time series object first
+livestock_ts_major = africa_1 %>% 
+  filter(Item == "Major livestock types") %>% 
+  select(Year, Livestock_Density)
+
+livestock_ts_obj = ts(livestock_ts_major$Livestock_Density, start = 1961, frequency = 1)
+
+
+```
+
+Transform our Time Series data to Log Form to remove fluctuations
+
+```{r}
+
+
+log_ls_ts = log(livestock_ts_obj)
+plot(log_ls_ts)
+```
+
+We can see that there is an upward trend for our Time Series Data.
+
+For creating the Time Series Model, we will use the function `auto.arima`. This will help us to identify the best configuration for our ARIMA model.
+
+```{r}
+arima_model = auto.arima(log_ls_ts)
+arima_model
+```
+
+Now that we are done with the Model, let's explore our ACF and PACF plots
+
+```{r}
+
+acf(arima_model$residuals, main = "Correlogram")
+```
+
+```{r}
+
+pacf(arima_model$residuals, main = "Partial Correlogram")
+```
+
+Testing Significance of Residuals using Ljung-Box Test
+
+```{r}
+Box.test(arima_model$residuals, lag = 20, type = "Ljung-Box")
+```
+
+Since our pvalue is greater than 0.05, we can conclude that there is no evidence that there is a Non-Zero Autocorrelation in our forecast error from Lags 1 to 20.
+
+Next we will generate a Residual Plot. This will help us confirm if our model is correct or if we need to consider other modelling algorithm.
+
+```{r}
+
+hist(arima_model$residuals,
+     col = "red",
+     xlab = "Error",
+     main = "Histogram of Residuals",
+     freq = FALSE)
+```
+
+As we can see, most of the values for Error are concentrated on 0.
+
+Finally, we can now start to forecast using our ARIMA model. On our script below we will try to predict the Major Livestock Density for the next 5 years
+
+```{r}
+
+model_forecast = forecast(arima_model, 5)
+autoplot(model_forecast)
+
+```
+
+Our model captured the upward trend of our Log Transformed Time Series Data. The dark and light blue region indicates the confidence interval of our prediction or forecast. Notice that our model did not capture any fluctuation from our original data, that is because our data does not have a seasonality component. The up and down movement we are seeing may be due to noise but not enough for our model to consider it as a pattern for forecasting.
+
+```{r}
+accuracy(model_forecast)
+```
+
+Running `accuracy` function tells us how well our model is performing. The rmse value tells us the root mean squared error of our model. Our target for this metric is for it to be lower when compared to other model performance evaluation.
