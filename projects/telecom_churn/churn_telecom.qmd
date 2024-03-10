@@ -20,6 +20,10 @@ library(tidymodels)
 library(data.table)
 library(rpart)
 library(rpart.plot)
+library(doParallel)
+
+all_cores = parallel::detectCores(logical = FALSE)
+doParallel::registerDoParallel(cores = all_cores)
 
 churn_data = fread("churn_data.csv") %>% as_tibble()
 ```
@@ -448,6 +452,10 @@ xg_train = training(xg_split)
 xg_test = testing(xg_split)
 
 xg_cv_fold = vfold_cv(xg_train, v = 10)
+
+xg_recipe = recipe( Churn ~ ., data = xg_train) %>% 
+  step_normalize(all_numeric()) %>% 
+  prep()
 ```
 
 ### XGBoost Model Specification
@@ -457,7 +465,7 @@ xg_cv_fold = vfold_cv(xg_train, v = 10)
 #XGBoost Model Specs
 xgboost_model = boost_tree(
   mode = "classification",
-  trees = 1000,
+  trees = 100,
   min_n = tune(),
   tree_depth = tune(),
   learn_rate = tune(),
@@ -501,3 +509,73 @@ xgboost_tuned = tune_grid(
   control = control_grid(verbose = TRUE)
 )
 ```
+
+Now that we are done with Model Tuning, let's explore the result of the object.
+
+```{r warning=FALSE, message=FALSE}
+
+xgboost_tuned %>% 
+  tune::show_best(metric = "accuracy")
+```
+
+Next, we will isolate the best performing hyperparameter values.
+
+```{r warning=FALSE, message=FALSE}
+xgboost_best_params = xgboost_tuned %>% 
+  select_best("accuracy")
+
+xgboost_best_params
+```
+
+Finalize the XGBoost model to use the best tuning parameters.
+
+```{r warning=FALSE, message=FALSE}
+xgboost_model_final = xgboost_model %>% 
+  finalize_model(xgboost_best_params)
+```
+
+Now that we have our final model, let's test it using our training model first. This is a recommended way of checking if our model is overfitting.
+
+```{r warning=FALSE, message=FALSE}
+
+train_processed = bake(xg_recipe, new_data = xg_train)
+
+train_prediction = xgboost_model_final %>% 
+  fit(
+    formula = Churn ~ .,
+    data = train_processed
+  ) %>% 
+  predict(new_data = train_processed) %>% 
+  bind_cols(xg_train)
+
+xgboost_score_train = train_prediction %>% 
+  metrics(Churn, .pred_class)
+
+
+xgboost_score_train
+```
+
+We have 96% accuracy for training data. Let's check the performance of our model on our testing data.
+
+```{r warning=FALSE, message=FALSE}
+
+test_process = bake(xg_recipe, new_data = xg_test)
+
+test_prediction = xgboost_model_final %>% 
+  fit(
+    formula = Churn ~ ., 
+    data = test_process
+  ) %>% 
+  predict(new_data = test_process) %>% 
+  bind_cols(xg_test)
+
+
+
+xgboost_score_test = test_prediction %>% 
+  metrics(Churn, .pred_class)
+
+
+xgboost_score_test
+```
+
+XGBoost model resulted to an almost same performing model with the Decision Tree model. We can either select XGboost or Decision Tree for our Final model. For me, I will just settle with Decision Tree. We will still have the 92% accurate model with a simple model implementation and for that I think Decision Tree is a good choice.
