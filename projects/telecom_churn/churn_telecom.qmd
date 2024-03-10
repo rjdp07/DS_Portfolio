@@ -2,6 +2,8 @@
 title: "Telecom Customer Churn Analysis"
 ---
 
+## Overview
+
 **Churn** is the percentage of customers that stop using a service or product over a given period of time. It is an important metric that most of the company is tracking. Analyzing churn will help the organization to identify how huge their churn rate is, what is causing the churn and how can they prevent it from happening.
 
 On this project, we will use Telecom Customer Churn data to answer the following questions:

@@ -21,7 +21,7 @@ website:
       contents:
         - projects.qmd
         - projects/telecom_churn/churn_telecom.qmd
-        - projects/causal.qmd
+        - projects/hotel_predictive/pred_hotel_bookings.qmd
         - projects/Livestock/livestock.qmd
   page-footer:
     right: "Built with [Quarto](https://quarto.org/)"
