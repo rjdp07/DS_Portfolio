@@ -94,6 +94,7 @@ The data we are going to use is hotel bookings data. It came from Antonio, Almei
 
 library(tidymodels)
 library(readr)
+library(vip)
 
 hotels = read_csv("https://tidymodels.org/start/case-study/hotels.csv") %>%
   mutate(across(where(is.character), as.factor))
@@ -265,4 +266,184 @@ lr_auc <-
   mutate(model = "Logistic Regression")
 
 autoplot(lr_auc)
+```
+
+## Second Model: Tree-Based Ensemble or Random Forest
+
+Random forest is an efficient yet low-maintenance machine learning model. It offers more flexibility in data types and result compared to Logistic Regression. It is a type of ensemble model mostly containing thousands of decision trees, where each Decision Tree iteration used a slightly different version of the training data and learns a sequence of splitting rules to predict new data. We are going to utilize all of our available cores to improve the training time of our model
+
+```{r warning=FALSE, message=FALSE}
+
+cores = parallel::detectCores()
+cores
+```
+
+We have 16 available cores to work with. We can pass it on our model for parallel processing.
+
+```{r warning=FALSE, message=FALSE}
+
+rf_mod = rand_forest(mtry = tune(), min_n = tune(), trees = 1000) %>% 
+  set_engine("ranger",num.threads = cores) %>% 
+  set_mode("classification")
+
+#Create the recipe and workflow
+
+rf_recipe <- 
+  recipe(children ~ ., data = hotel_train) %>% 
+  step_date(arrival_date) %>% 
+  step_holiday(arrival_date) %>% 
+  step_rm(arrival_date) 
+```
+
+Then we are going to add this recipe to our parsnip model for a new workflow on predicting whether a children is included on a hotel stay.
+
+```{r warning=FALSE, message=FALSE}
+
+rf_workflow = workflow() %>% 
+  add_model(rf_mod) %>% 
+  add_recipe(rf_recipe)
+
+```
+
+Train and Tune the model.
+
+```{r warning=FALSE, message=FALSE}
+
+rf_mod
+#> Random Forest Model Specification (classification)
+#> 
+#> Main Arguments:
+#>   mtry = tune()
+#>   trees = 1000
+#>   min_n = tune()
+#> 
+#> Engine-Specific Arguments:
+#>   num.threads = cores
+#> 
+#> Computational engine: ranger
+
+# show what will be tuned
+extract_parameter_set_dials(rf_mod)
+#> Collection of 2 parameters for tuning
+#> 
+#>  identifier  type    object
+#>        mtry  mtry nparam[?]
+#>       min_n min_n nparam[+]
+#> 
+#> Model parameters needing finalization:
+#>    # Randomly Selected Predictors ('mtry')
+#> 
+#> See `?dials::finalize` or `?dials::update.parameters` for more information.
+```
+
+```{r warning=FALSE, message=FALSE}
+
+set.seed(345)
+rf_res <- 
+  rf_workflow %>% 
+  tune_grid(val_set,
+            grid = 25,
+            control = control_grid(save_pred = TRUE),
+            metrics = metric_set(roc_auc))
+#> i Creating pre-processing data to finalize unknown parameter: mtry
+
+```
+
+Let's check the top 5 random forest model out of the 25 candidates.
+
+```{r warning=FALSE, message=FALSE}
+
+rf_res %>% 
+  show_best(metric = "roc_auc")
+
+```
+
+We can already see how the result of random forest is way better compared to the penalized logistic regression which resulted to an ROC AUC of 0.876. Let's continue by selecting the best model.
+
+```{r warning=FALSE, message=FALSE}
+
+rf_best <- 
+  rf_res %>% 
+  select_best(metric = "roc_auc")
+rf_best
+#> # A tibble: 1 × 3
+#>    mtry min_n .config              
+#>   <int> <int> <chr>                
+#> 1     8     7 Preprocessor1_Model13
+```
+
+We will collect the data we need to plot an ROC AUC curve and compare it with the penalized Logistic Regression ROC AUC Curve
+
+```{r warning=FALSE, message=FALSE}
+rf_res %>% 
+  collect_predictions()
+
+rf_auc <- 
+  rf_res %>% 
+  collect_predictions(parameters = rf_best) %>% 
+  roc_curve(children, .pred_children) %>% 
+  mutate(model = "Random Forest")
+```
+
+```{r warning=FALSE, message=FALSE}
+
+bind_rows(rf_auc, lr_auc) %>% 
+  ggplot(aes(x = 1 - specificity, y = sensitivity, col = model)) + 
+  geom_path(lwd = 1.5, alpha = 0.8) +
+  geom_abline(lty = 3) + 
+  coord_equal() + 
+  scale_color_viridis_d(option = "plasma", end = .6)
+```
+
+## The Final Model
+
+We will now finalize the model with its best performing hyperparameter values.
+
+```{r warning=FALSE, message=FALSE}
+# the last model
+last_rf_mod <- 
+  rand_forest(mtry = 8, min_n = 7, trees = 1000) %>% 
+  set_engine("ranger", num.threads = cores, importance = "impurity") %>% 
+  set_mode("classification")
+
+# the last workflow
+last_rf_workflow <- 
+  rf_workflow %>% 
+  update_model(last_rf_mod)
+
+# the last fit
+set.seed(345)
+last_rf_fit <- 
+  last_rf_workflow %>% 
+  last_fit(splits)
+
+last_rf_fit
+
+```
+
+Evaluating Final Model performance
+
+```{r warning=FALSE, message=FALSE}
+
+last_rf_fit %>% 
+  collect_metrics()
+```
+
+Check variable importance
+
+```{r warning=FALSE, message=FALSE}
+
+last_rf_fit %>% 
+  extract_fit_parsnip() %>% 
+  vip(num_features = 20)
+```
+
+Plotting the ROC Curve of the Final Model
+
+```{r warning=FALSE, message=FALSE}
+
+last_rf_fit %>% 
+  collect_predictions() %>% 
+  roc_curve(children, .pred_children) %>% 
+  autoplot()
 ```
