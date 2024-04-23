@@ -1,17 +1,17 @@
 [
   {
-    "objectID": "projects.html#project-2",
-    "href": "projects.html#project-2",
-    "title": "Projects",
-    "section": "Project 2",
-    "text": "Project 2"
+    "objectID": "projects.html#predicting-children-hotel-stay-booking-using-tidymodels",
+    "href": "projects.html#predicting-children-hotel-stay-booking-using-tidymodels",
+    "title": "RJ Dela Peña",
+    "section": "Predicting Children Hotel Stay Booking using TidyModels",
+    "text": "Predicting Children Hotel Stay Booking using TidyModels"
   },
   {
-    "objectID": "projects.html#project-3",
-    "href": "projects.html#project-3",
-    "title": "Projects",
-    "section": "Project 3",
-    "text": "Project 3"
+    "objectID": "projects.html#global-livestock-trend-analysis",
+    "href": "projects.html#global-livestock-trend-analysis",
+    "title": "RJ Dela Peña",
+    "section": "Global Livestock Trend Analysis",
+    "text": "Global Livestock Trend Analysis"
   },
   {
     "objectID": "projects/hotel_predictive/pred_hotel_bookings.html",
@@ -70,11 +70,25 @@
     "text": "The Final Model\nWe will now finalize the model with its best performing hyperparameter values.\n\n# the last model\nlast_rf_mod &lt;- \n  rand_forest(mtry = 8, min_n = 7, trees = 1000) %&gt;% \n  set_engine(\"ranger\", num.threads = cores, importance = \"impurity\") %&gt;% \n  set_mode(\"classification\")\n\n# the last workflow\nlast_rf_workflow &lt;- \n  rf_workflow %&gt;% \n  update_model(last_rf_mod)\n\n# the last fit\nset.seed(345)\nlast_rf_fit &lt;- \n  last_rf_workflow %&gt;% \n  last_fit(splits)\n\nlast_rf_fit\n\n# Resampling results\n# Manual resampling \n# A tibble: 1 × 6\n  splits                id             .metrics .notes   .predictions .workflow \n  &lt;list&gt;                &lt;chr&gt;          &lt;list&gt;   &lt;list&gt;   &lt;list&gt;       &lt;list&gt;    \n1 &lt;split [37500/12500]&gt; train/test sp… &lt;tibble&gt; &lt;tibble&gt; &lt;tibble&gt;     &lt;workflow&gt;\n\n\nEvaluating Final Model performance\n\nlast_rf_fit %&gt;% \n  collect_metrics()\n\n# A tibble: 2 × 4\n  .metric  .estimator .estimate .config             \n  &lt;chr&gt;    &lt;chr&gt;          &lt;dbl&gt; &lt;chr&gt;               \n1 accuracy binary         0.946 Preprocessor1_Model1\n2 roc_auc  binary         0.924 Preprocessor1_Model1\n\n\nCheck variable importance\n\nlast_rf_fit %&gt;% \n  extract_fit_parsnip() %&gt;% \n  vip(num_features = 20)\n\n\n\n\nPlotting the ROC Curve of the Final Model\n\nlast_rf_fit %&gt;% \n  collect_predictions() %&gt;% \n  roc_curve(children, .pred_children) %&gt;% \n  autoplot()"
   },
   {
+    "objectID": "about.html",
+    "href": "about.html",
+    "title": "Areas of Intereset",
+    "section": "",
+    "text": "Machine Learning\nI always enjoy developing machine learning model that helps solve a business problem.\n\n\nModel Deployment\nDeveloping a Machine Learning model is just the start. Making it usable across the company is another story. I’ve been interested on how to make\nmy machine learning models scalable and deployment ready. This includes, containerization, version control and CI/CD.\n\n\n\n\n\n\n\nData Analytics\nI love telling a story. Identifying patterns, discovering trends and interpreting it back to business is one of the main reason why I love Data Science! Making beautiful, informative and compelling presentation for me is the best part of interpreting your insight to the client.\n\n\n\n\n\n\n\nData Engineering/Developing Automated ETL/Manual Task Automation\nAutomating Task and developing ETL is one of my favorite technical skills. Having the ability to cut down the time it took for a csv file to be downloaded by using python is the best for me! Extracting, Transforming, manipulating, cleaning and loading sets of data to form a stable pipeline is a work that I will never get tired of."
+  },
+  {
     "objectID": "index.html",
     "href": "index.html",
-    "title": "About Me",
+    "title": "RJ Dela Peña",
     "section": "",
-    "text": "Thanks for checking out my web site!"
+    "text": "R Programmer. Data Scientist/Data Engineer. Unlocking Insights, Empowering Decisions"
+  },
+  {
+    "objectID": "index.html#ray-john-dela-peña",
+    "href": "index.html#ray-john-dela-peña",
+    "title": "RJ Dela Peña",
+    "section": "",
+    "text": "R Programmer. Data Scientist/Data Engineer. Unlocking Insights, Empowering Decisions"
   },
   {
     "objectID": "projects/churn.html#about-the-data",

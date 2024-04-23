@@ -3,34 +3,25 @@ project:
   output-dir: docs
   
 website:
-  title: "Data Science Portolio"
+  title: "RJ Dela Peña"
+  search: false
   navbar:
-    left:
-      - text: "Home"
+    right:
+      - text: "HOME"
         file: index.qmd
-      - text: "Projects"
+      - text: "PROJECTS"
         file: projects.qmd
-    tools:
-      - icon: twitter
-        href: https://twitter.com/
-      - icon: github
-        href: https://github.com/rjdp07/DS_Portfolio
-  sidebar:
-    - title: "Projects"
-      style: "docked"
-      contents:
-        - projects.qmd
-        - projects/telecom_churn/churn_telecom.qmd
-        - projects/hotel_predictive/pred_hotel_bookings.qmd
-        - projects/Livestock/livestock.qmd
+      - text: "ABOUT"
+        file: about.qmd        
+
   page-footer:
     right: "Built with [Quarto](https://quarto.org/)"
-    left: "&copy; Copyright 2023, Ray John Dela Peña"
+    left: "&copy; Copyright 2024, Ray John Dela Peña"
 
 format:
   html:
     theme: flatly
-    toc: true
+    toc: false
 
 editor: source
 

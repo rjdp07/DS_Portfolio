@@ -1,9 +1,9 @@
 ---
-title: "Projects"
+title: ""
 ---
 
-## Project 1
+## [Churn Analysis on a Telecommunications Company](projects/telecom_churn/churn_telecom.qmd)
 
-## Project 2
+## [Predicting Children Hotel Stay Booking using TidyModels](projects/hotel_predictive/pred_hotel_bookings.qmd)
 
-## Project 3
+## [Global Livestock Trend Analysis](projects/Livestock/livestock.qmd)

@@ -1,13 +1,19 @@
 ---
-title: "About Me"
+title: ""
 ---
 
-::: {#me}
-## Goals
+::: columns
+::: {.column width="60%"}
+<br> <br> <br>
 
-## Education
+### I am
 
-## Experience
+## Ray John Dela Peña
+
+R Programmer. Data Scientist/Data Engineer. Unlocking Insights, Empowering Decisions
 :::
 
-Thanks for checking out my web site!
+::: {.column width="40%"}
+![](images/dp.jpg){fig-align="right"}
+:::
+:::

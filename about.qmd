@@ -1,0 +1,27 @@
+---
+title: "Areas of Intereset"
+---
+
+### Machine Learning
+
+I always enjoy developing machine learning model that helps solve a business problem.![](images/ml_pic.png){width="297"}
+
+### Model Deployment
+
+Developing a Machine Learning model is just the start. Making it usable across the company is another story. I've been interested on how to make
+
+my machine learning models scalable and deployment ready. This includes, containerization, version control and CI/CD.
+
+![](images/model_dep.png){fig-align="left" width="355" height="270"}
+
+### Data Analytics
+
+I love telling a story. Identifying patterns, discovering trends and interpreting it back to business is one of the main reason why I love Data Science! Making beautiful, informative and compelling presentation for me is the best part of interpreting your insight to the client.
+
+![](images/data_analytics.jpg){fig-align="left" width="341" height="251"}
+
+### Data Engineering/Developing Automated ETL/Manual Task Automation
+
+Automating Task and developing ETL is one of my favorite technical skills. Having the ability to cut down the time it took for a csv file to be downloaded by using python is the best for me! Extracting, Transforming, manipulating, cleaning and loading sets of data to form a stable pipeline is a work that I will never get tired of.
+
+![](images/de.jpg){width="451"}
