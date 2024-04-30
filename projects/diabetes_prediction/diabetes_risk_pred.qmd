@@ -1,0 +1,376 @@
+---
+title: "diabetes_risk_prediction"
+author: "Ray John Dela Peña"
+---
+
+## Overview
+
+Diabetes, a chronic metabolic disorder affecting millions worldwide, poses significant challenges to healthcare systems and individuals alike. Characterized by elevated blood sugar levels, diabetes arises from the body's inability to produce or effectively utilize insulin, a hormone crucial for regulating blood sugar. Its prevalence is on the rise globally, driven by factors such as sedentary lifestyles, unhealthy dietary habits, and aging populations. Beyond its immediate health impacts, diabetes increases the risk of serious complications, including cardiovascular disease, kidney failure, and blindness, imposing substantial economic and social burdens. Addressing the complexities of diabetes requires a multifaceted approach, integrating medical interventions, lifestyle modifications, and public health initiatives. In this data science portfolio, we delve into the realm of predictive modeling to better understand diabetes risk factors, enhance early detection, and inform targeted interventions, aiming to contribute meaningfully to diabetes management and prevention efforts.
+
+## Data Dictionary
+
+-   *Age*: This represents the age of the individual in years.
+
+-   *Gender*: This is the gender of the individual. It can be Male or Female.
+
+-   *Polyuria*: This refers to the presence of excessive urination, which is a common symptom of diabetes.
+
+-   *Polydipsia*: This refers to excessive thirst, another common symptom of diabetes.
+
+-   *Sudden weight loss*: This indicates whether the individual has experienced unexplained weight loss, which can be a sign of diabetes.
+
+-   *Weakness*: This indicates whether the individual experiences general physical weakness, a potential symptom of diabetes.
+
+-   *Polyphagia*: This refers to excessive hunger, another potential symptom of diabetes.
+
+-   *Genital thrush*: This is a yeast infection that can cause itching, soreness, and other discomforts in the genital area. It can be more common in people with diabetes.
+
+-   *Visual blurring*: This indicates whether the individual experiences blurred vision, a potential symptom of diabetes.
+
+-   *Itching*: This indicates whether the individual experiences general itching, which can be a symptom of diabetes.
+
+-   *Irritability*: This indicates whether the individual experiences irritability, which can be a symptom of diabetes.
+
+-   *Delayed healing*: This indicates whether the individual experiences slow healing of wounds, which can be a symptom of diabetes.
+
+-   *Partial paresis*: This refers to a partial loss of voluntary movement, which can be a symptom of diabetes.
+
+-   *Muscle stiffness*: This indicates whether the individual experiences muscle stiffness, which can be a symptom of diabetes.
+
+-   *Alopecia*: This refers to hair loss, which can be a symptom of diabetes.
+
+-   *Obesity*: This indicates whether the individual is obese, which is a major risk factor for diabetes.
+
+## Code
+
+### Library Import and Installation
+
+```{r warning=FALSE, message=FALSE}
+#install.packages("tidyverse")
+library(tidyverse)
+#install.packages("tidymodels")
+library(tidymodels)
+#install.packages("data.table")
+library(data.table)
+
+```
+
+## Data Import
+
+```{r warning=FALSE, message=FALSE}
+diabetes_data = fread("diabetes_risk_prediction_dataset.csv") %>% as_tibble()
+
+#Quick overview of data class
+glimpse(diabetes_data)
+```
+
+## Data Cleansing and Exploratory Data Analysis
+
+```{r warning=FALSE, message=FALSE}
+
+#Check Age distribution
+diabetes_data %>% 
+  ggplot(aes(x = Age)) +
+  geom_histogram()
+
+#Check QQ Plot for Normality
+qqnorm(diabetes_data$Age)
+qqline(diabetes_data$Age)
+```
+
+Both QQ Plot and Histogram seems to show a normally distributed data. Let's use `shapiro.test()` to perform Shapiro-Wilk test for normality.
+
+```{r warning=FALSE, message=FALSE}
+
+shapiro.test(diabetes_data$Age)
+```
+
+P-value is way less than 0.05 indicating a non-normal data. Let's take a look what will be the result if use Kolmogorov-smirnov test.
+
+```{r warning=FALSE, message=FALSE}
+
+ks.test(diabetes_data$Age,'pnorm')
+```
+
+The **age** column **failed both Normality Test**. Age column is **not normal.**
+
+Let's check the **Gender** column for frequency.
+
+```{r warning=FALSE, message=FALSE}
+
+diabetes_data %>% 
+  ggplot(aes(x = Gender)) +
+  geom_bar()
+
+```
+
+We have more male than female. Let's try to use our respondent variable as fill and see which class has the most count of Positive or Negative value for Diabetes.
+
+```{r warning=FALSE, message=FALSE}
+
+diabetes_data %>% 
+  ggplot(aes(x = Gender, fill = class)) +
+  geom_bar(position = "dodge")
+```
+
+The bar graph shows how **Female** class have more **Positive Diabetes Class** compared to **Male.**
+
+Let's check **Polyuria** for distribution and behavior when we add the **class** column as fill
+
+```{r warning=FALSE, message=FALSE}
+
+diabetes_data %>% 
+  ggplot(aes( x = Polyuria))+
+  geom_bar()
+
+diabetes_data %>% 
+  ggplot(aes(x = Polyuria, fill = class)) +
+  geom_bar(position = "dodge")
+```
+
+A clear sign of how having a Polyuria or excessive urination can be a strong indicator of Diabetes.
+
+Let's check Polydipsia.
+
+```{r warning=FALSE, message=FALSE}
+
+diabetes_data %>% 
+  ggplot(aes(x = Polydipsia)) +
+  geom_bar()
+
+diabetes_data %>% 
+  ggplot(aes(x = Polydipsia, fill = class)) +
+  geom_bar(position = "dodge")
+```
+
+Almost the same behavior for Polydispia. Looks like Polydispia and Polyuria can be use as a strong predictor for Diabetes class.
+
+Let's explore Sudden weight lost
+
+```{r warning=FALSE, message=FALSE}
+
+diabetes_data %>% 
+  ggplot(aes(x = `sudden weight loss`)) +
+  geom_bar()
+
+diabetes_data %>% 
+  ggplot(aes(x = `sudden weight loss`, fill = class)) +
+  geom_bar(position = "dodge")
+```
+
+Another strong indicator for Diabetes Class.
+
+Let's look at **Weakness** column.
+
+```{r warning=FALSE, message=FALSE}
+
+diabetes_data %>% 
+  ggplot(aes(x = weakness)) +
+  geom_bar()
+
+diabetes_data %>% 
+  ggplot(aes(x = weakness,fill = class)) +
+  geom_bar(position = "dodge")
+```
+
+Another potential indicator for positive Diabetes Class. Let's continue to explore all of categorical variables.
+
+```{r warning=FALSE, message=FALSE}
+
+diabetes_data %>% 
+  ggplot(aes(x = Polyphagia)) +
+  geom_bar()
+
+diabetes_data %>% 
+  ggplot(aes(x = Polyphagia, fill = class)) +
+  geom_bar(position = "dodge")
+```
+
+```{r warning=FALSE, message=FALSE}
+
+diabetes_data %>% 
+  ggplot(aes(x = `Genital thrush`)) +
+  geom_bar()
+
+diabetes_data %>% 
+  ggplot(aes(x = `Genital thrush`, fill = class)) +
+  geom_bar(position = "dodge")
+```
+
+```{r warning=FALSE, message=FALSE}
+
+diabetes_data %>% 
+  ggplot(aes(x = `visual blurring`)) +
+  geom_bar()
+
+diabetes_data %>% 
+  ggplot(aes(x = `visual blurring`, fill = class)) +
+  geom_bar(position = "dodge")
+```
+
+```{r warning=FALSE, message=FALSE}
+
+diabetes_data %>% 
+  ggplot(aes(x = Itching)) +
+  geom_bar()
+
+diabetes_data %>% 
+  ggplot(aes(x = Itching, fill = class)) +
+  geom_bar(position = "dodge")
+```
+
+```{r warning=FALSE, message=FALSE}
+
+diabetes_data %>% 
+  ggplot(aes(x = Irritability)) +
+  geom_bar()
+
+diabetes_data %>% 
+  ggplot(aes(x = Irritability, fill = class)) +
+  geom_bar(position = "dodge")
+```
+
+```{r warning=FALSE, message=FALSE}
+
+diabetes_data %>% 
+  ggplot(aes(x = `delayed healing`)) +
+  geom_bar()
+
+diabetes_data %>% 
+  ggplot(aes(x = `delayed healing`, fill = class)) +
+  geom_bar(position = "dodge")
+```
+
+```{r warning=FALSE, message=FALSE}
+
+diabetes_data %>% 
+  ggplot(aes(x = `partial paresis`)) +
+  geom_bar()
+
+diabetes_data %>% 
+  ggplot(aes(x = `partial paresis`, fill = class)) +
+  geom_bar(position = "dodge")
+```
+
+```{r warning=FALSE, message=FALSE}
+
+diabetes_data %>% 
+  ggplot(aes(x = `muscle stiffness`)) +
+  geom_bar()
+
+diabetes_data %>% 
+  ggplot(aes(x = `muscle stiffness`, fill = class)) +
+  geom_bar(position = "dodge")
+```
+
+```{r warning=FALSE, message=FALSE}
+
+diabetes_data %>% 
+  ggplot(aes(x = Alopecia)) +
+  geom_bar()
+
+diabetes_data %>% 
+  ggplot(aes(x = Alopecia, fill = class)) +
+  geom_bar(position = "dodge")
+```
+
+```{r warning=FALSE, message=FALSE}
+
+diabetes_data %>% 
+  ggplot(aes(x = Obesity)) +
+  geom_bar()
+
+diabetes_data %>% 
+  ggplot(aes(x = Obesity, fill = class)) +
+  geom_bar(position = "dodge")
+```
+
+## Splitting Dataset
+
+```{r warning=FALSE, message=FALSE}
+
+diabetes_data_model = diabetes_data %>% 
+  mutate_if(is.character,as.factor)
+
+set.seed(222)
+data_split = initial_split(diabetes_data_model, prop = 3/4)
+training_data = training(data_split)
+testing_data = testing(data_split)
+
+```
+
+## Training Data Modelling
+
+```{r warning=FALSE, message=FALSE}
+
+#Create Recipe
+diabetes_logit = recipe(class ~ ., data = training_data)
+
+#Prepare Model Engine
+logit_model = logistic_reg() %>% 
+  set_engine("glm")
+
+#Create workflow
+diabetes_logit_workflow = workflow() %>% 
+  add_model(logit_model) %>% 
+  add_recipe(diabetes_logit)
+
+#Fit Data
+diabetes_logit_fit = diabetes_logit_workflow %>% 
+  fit(data = training_data)
+
+#Extract Metrics
+diabetes_logit_fit %>% 
+  extract_fit_parsnip() %>% 
+  tidy() %>% 
+  filter(p.value < 0.05)
+```
+
+## Training Data Model Evaluation
+
+Now that we have our model, we will evaluate it first using our train data. Just for us to have an idea of how our model performs.
+
+```{r warning=FALSE, message=FALSE}
+
+#Predict training data using our model
+predict(diabetes_logit_fit, training_data) %>% 
+  count(.pred_class)
+
+
+#Append our predicted class on the actual training class
+diabetes_train_aug = augment(diabetes_logit_fit, training_data)
+diabetes_train_aug %>% 
+  head()
+```
+
+Let's plot an ROC Curve
+
+```{r warning=FALSE, message=FALSE}
+
+diabetes_train_aug %>% 
+  roc_curve(truth = class,.pred_Negative) %>% 
+  autoplot()
+```
+
+Then calculate accuracy
+
+```{r warning=FALSE, message=FALSE}
+
+diabetes_logit_train_pred = predict(diabetes_logit_fit, training_data) %>% 
+  bind_cols(predict(diabetes_logit_fit, training_data,type = "prob")) %>% 
+  bind_cols(training_data %>% select(class))
+
+
+diabetes_logit_train_pred %>% 
+  accuracy(truth = class, .pred_class)
+```
+
+We have a training accuracy of 92%. To further assess our model, let's do 10-fold cross validation and compare it with our straight-forward training model performance.
+
+## Cross-Fold Validation
+
+```{r warning=FALSE, message=FALSE}
+
+set.seed(345)
+
+```
