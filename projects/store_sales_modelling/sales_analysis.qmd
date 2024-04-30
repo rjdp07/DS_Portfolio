@@ -200,11 +200,12 @@ month_profit_data %>%
   geom_point() +
   geom_line()
 
-#Interesting, Just by looking at it, it seems like the number of negative profits we have per month has a trend and seasonality
-#Best way to check it is to try to extract the time series components of our data.
+
 
 
 ```
+
+Interesting, Just by looking at it, it seems like the number of negative profits we have per month has a trend and seasonality. Best way to check it is to try to extract the time series components of our data.
 
 ```{r warning=FALSE, message=FALSE}
 
@@ -215,12 +216,15 @@ monthly_loss = month_profit_data %>%
 ts_loss = ts(monthly_loss$n,start = c(2014,01),frequency = 12)
 plot(ts_loss)
 decompose(ts_loss) %>% plot()
+
 ```
 
-```{r warning=FALSE, message=FALSE}
-#Looks like our hunch is correct, we have a seasonal data on our hand. Looking at the seasonal component, it seems like that we usually experience a high count of Loss in profit at the end of the year. This could be attributed to end of year sale we usually implement.
+Looks like our hunch is correct, we have a seasonal data on our hand. Looking at the seasonal component, it seems like that we usually experience a high count of Loss in profit at the end of the year. This could be attributed to end of year sale we usually implement.
 
-#Lets try to look the gain side of the data. See if we can spot a trend or seasonality as well
+Lets try to look the gain side of the data. See if we can spot a trend or seasonality as well
+
+```{r warning=FALSE, message=FALSE}
+
 
 monthly_gain = month_profit_data %>% 
   filter(Gain_Loss == "Gain") %>% 
@@ -230,8 +234,10 @@ ts_gain = ts(monthly_gain$n,start = c(2014,01),frequency = 12)
 plot(ts_gain)
 decompose(ts_gain) %>% plot()
 
-#Looks like we have a better seasonality pattern here on our Gain Side for profit.
+
 ```
+
+Looks like we have a better seasonality pattern here on our Gain Side for profit.
 
 ```{r warning=FALSE, message=TRUE}
 
