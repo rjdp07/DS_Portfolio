@@ -7,3 +7,5 @@ title: ""
 ## [Predicting Children Hotel Stay Booking using TidyModels](projects/hotel_predictive/pred_hotel_bookings.qmd)
 
 ## [Global Livestock Trend Analysis](projects/Livestock/livestock.qmd)
+
+## [Sales and Quantity Forecasting using TidyModels, modeltime and timetk](projects/store_sales_modelling/sales_analysis.qmd)
