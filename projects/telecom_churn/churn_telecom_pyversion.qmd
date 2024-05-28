@@ -1,0 +1,365 @@
+---
+title: "Churn Telecom Python Version"
+---
+
+## Overview
+
+**Churn** is the percentage of customers that stop using a service or product over a given period of time. It is an important metric that most of the company is tracking. Analyzing churn will help the organization to identify how huge their churn rate is, what is causing the churn and how can they prevent it from happening.
+
+On this project, we will use Telecom Customer Churn data to answer the following questions:
+
+1.  What is the proportion of Customer that Churned to those who did not?
+
+2.  Which State has the highest churn rate?
+
+3.  What attribute is contributing on the probability that a customer will churn?
+
+After answering Exploratory Questions we will proceed to create 3 Classification Model that will predict Churn. We will compare each model and decide which model to use for predicting whether a customer will churn or no.
+
+## Library and Data Import
+
+```{python}
+
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import numpy as np
+
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.compose import ColumnTransformer
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import KFold
+from sklearn.model_selection import cross_val_score
+from sklearn.metrics import accuracy_score
+from sklearn.tree import DecisionTreeClassifier
+from xgboost import XGBClassifier
+from sklearn.model_selection import GridSearchCV
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import roc_auc_score, roc_curve
+```
+
+```{python}
+#Import Data
+churn_data = pd.read_csv("churn_data.csv")
+```
+
+## Exploratory Data Analysis
+
+### Check Cardinality
+
+```{python}
+
+churn_data.describe
+```
+
+```{python}
+
+#Check State Column
+churn_data['State'].value_counts(sort = True)
+```
+
+```{python}
+
+churn_data['International plan'].value_counts(sort = True)
+```
+
+```{python}
+churn_data['Voice mail plan'].value_counts(sort = True)
+```
+
+Majority of the customers don't have an International and Voice Mail Plan
+
+```{python}
+
+histogram_data = churn_data[churn_data['Number vmail messages'] != 0]
+
+plt.hist(histogram_data['Number vmail messages'],bins = 30,color = 'skyblue',edgecolor = 'black')
+plt.xlabel('Vmail Message Count')
+plt.ylabel('Frequency')
+#plt.clf()
+
+plt.show()
+
+```
+
+For the number of vmail messages among those customers that has a Voice mail plan, we can see that most of the count are concentrated on 30 voice mail messages. I filtered out those customers with no voice mail plan to avoid underestimation of our histogram for the customers that has the voice mail plan.
+
+The next numerical columns we will explore are all measure of how many minutes that customer spent for calling during the day, eve, night and international call if the customer has an international call plan.
+
+Let’s visualize the distribution for day usage.
+
+```{python}
+
+#Let's create a function for histogram plotting
+
+def hist_plot(x_axis, xlabel, bins = 30):
+  plt.clf()
+  plt.hist(x_axis,bins = bins,color = 'skyblue',edgecolor = 'black')
+  plt.xlabel(xlabel)
+  plt.ylabel('Frequency')
+  plt.show()
+```
+
+```{python}
+
+
+hist_plot(churn_data['Total day minutes'], xlabel = 'Total day minutes')
+```
+
+```{python}
+
+hist_plot(churn_data['Total day calls'],xlabel = 'Total day calls')
+```
+
+```{python}
+
+hist_plot(churn_data['Total day charge'], xlabel = 'Total day Charge')
+```
+
+```{python}
+
+def hist_plot_with_labels(cat_color x_axis, xlabel, bins = 30):
+  plt.clf()
+  plt.hist(x_axis,bins = bins,color = 'skyblue',edgecolor = 'black')
+  plt.xlabel(xlabel)
+  plt.ylabel('Frequency')
+  plt.show()
+  
+```
+
+```{python}
+plt.clf()
+sns.histplot(data = churn_data, x = "Total day calls", bins = 30,hue = 'Churn')
+  
+plt.show()
+
+```
+
+```{python}
+plt.clf()
+sns.histplot(data = churn_data, x = "Total day charge", hue = 'Churn')
+plt.show()
+```
+
+```{python}
+
+plt.clf()
+sns.histplot(data = churn_data, x = 'Total day minutes', hue = 'Churn')
+plt.show()
+```
+
+```{python}
+plt.clf()
+sns.histplot(data = churn_data, x = 'Total eve calls', hue = 'Churn')
+plt.show()
+```
+
+```{python}
+
+plt.clf()
+sns.histplot(data = churn_data, x = 'Total eve charge', hue = 'Churn')
+plt.show()
+```
+
+```{python}
+
+plt.clf()
+sns.histplot(data = churn_data, x = 'Total night calls', hue = 'Churn')
+plt.show()
+```
+
+```{python}
+
+plt.clf()
+sns.histplot(data = churn_data, x = 'Total night charge', hue = 'Churn')
+plt.show()
+```
+
+```{python}
+
+plt.clf()
+sns.histplot(data = churn_data, x = 'Total intl calls', hue = 'Churn')
+plt.show()
+```
+
+```{python}
+
+plt.clf()
+sns.histplot(data = churn_data, x = 'Total intl minutes', hue = 'Churn')
+plt.show()
+```
+
+```{python}
+
+plt.clf()
+sns.histplot(data = churn_data, x = 'Total intl charge', hue = 'Churn')
+plt.show()
+```
+
+```{python}
+plt.clf()
+sns.histplot(data = churn_data, x = 'Customer service calls',hue = 'Churn')
+plt.show()
+```
+
+### Data Aggregations
+
+```{python}
+
+#Average Number of Vmail messages 
+
+churn_data[churn_data['Number vmail messages'] != 0].groupby(['Churn'])['Number vmail messages'].mean()
+
+
+
+```
+
+```{python}
+
+#Average Total day minutes for Churn
+
+churn_data.groupby(['Churn'])['Total day minutes'].agg(['count','sum','mean','std'])
+```
+
+```{python}
+
+churn_data.groupby(['Churn'])['Total day calls'].agg(['count','sum','mean','std'])
+```
+
+```{python}
+
+churn_data.groupby(['Churn'])['Total day charge'].agg(['count','sum','mean','std'])
+```
+
+```{python}
+
+churn_data.groupby(['Churn'])['Total eve calls'].agg(['count','sum','mean','std'])
+```
+
+```{python}
+
+churn_data.groupby(['Churn'])['Total eve charge'].agg(['count','sum','mean','std'])
+```
+
+```{python}
+
+churn_data.groupby(['Churn'])['Total eve minutes'].agg(['count','sum','mean','std'])
+```
+
+```{python}
+plt.clf()
+churn_data.groupby(['Churn','International plan'])['Total eve minutes'].agg(['mean','std'])
+```
+
+## Data Split
+
+Now that we have some assumptions from the EDA we did, we can start preparing our data by splitting it into test and train data set. This is a vital part of any machine learning model project. This will allow our model to learn the pattern of our data and use that to predict unseen data coming from our test data set.
+
+```{python}
+
+churn_data_model = churn_data.drop(columns = ['Account length','Area code'])
+churn_data_model['Churn'] = [1 if x else 0 for x in churn_data_model['Churn']]
+
+
+
+```
+
+```{python}
+
+X = churn_data_model.drop(columns = ['Churn'], axis = 1)
+X.head()
+```
+
+```{python}
+
+y = churn_data_model['Churn']
+y.head()
+```
+
+Apply pre-processing for Predictor variable
+
+```{python}
+
+num_feature = X.select_dtypes(exclude = 'object').columns
+cat_feature = X.select_dtypes(include = 'object').columns
+
+
+num_transformer = StandardScaler()
+cat_transformer = OneHotEncoder()
+
+preprocessor = ColumnTransformer(
+  [
+    ('OneHotEncoder', cat_transformer, cat_feature),
+    ('StandardScaler', num_transformer, num_feature)
+  ]
+)
+
+X = preprocessor.fit_transform(X)
+
+```
+
+Now that we are done with pre-processing, let's move to splitting our test and train data set.
+
+```{python}
+
+X_train, X_test, y_train, y_test = train_test_split(X,y,test_size = 0.3, random_state = 720)
+
+X_train.shape, X_test.shape
+```
+
+## Modelling
+
+We will now create our base model which is Logistic Regression.
+
+```{python}
+
+model = LogisticRegression()
+model.fit(X_train, y_train)
+```
+
+Try predicting using the model
+
+```{python}
+
+logistic_predictions = model.predict_proba(X_test)[:,1]
+```
+
+```{python}
+
+accuracy = accuracy_score(y_test,logistic_predictions)
+accuracy
+```
+
+We achieved an accuracy of 87% for our logistic regression model. But we still need to check if our model is overfitted or underfitted.
+
+```{python}
+
+cv = KFold(n_splits = 10, random_state = 720, shuffle = True)
+cv_model = LogisticRegression()
+
+scores = cross_val_score(cv_model,X_train,y_train, scoring = 'accuracy',cv = cv,n_jobs = -1)
+mean_score = np.mean(scores)
+confidence_interval = np.std(scores) * 2
+mean_score, confidence_interval
+
+```
+
+Let's check ROC and AUC score to further evaluate our training model
+
+```{python}
+
+auc = np.round(roc_auc_score(y_test,predictions),3)
+print("AUC for our sample data is {}".format(auc))
+
+```
+
+Looks good enough. There is just a difference of 2% on our cross-validated model and our straight forward base logistic regression model
+
+Let's see what will our model performance if we use Decision Tree
+
+```{python}
+
+clf = DecisionTreeClassifier()
+clf.fit
+```

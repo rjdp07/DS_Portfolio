@@ -1,0 +1,28 @@
+---
+title: "sample_py"
+---
+
+Sample Python Scripting
+
+```{python}
+
+import os
+import pandas as pd
+
+diabetes_data = pd.read_csv("projects//diabetes_prediction//diabetes_risk_prediction_dataset.csv")
+
+```
+
+Check first 6 rows of data
+
+```{python}
+
+diabetes_data.head()
+```
+
+Check basic info
+
+```{python}
+
+diabetes_data.info()
+```

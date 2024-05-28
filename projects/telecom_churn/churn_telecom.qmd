@@ -23,9 +23,9 @@ library(data.table)
 library(rpart)
 library(rpart.plot)
 library(doParallel)
-
-all_cores = parallel::detectCores(logical = FALSE)
-doParallel::registerDoParallel(cores = all_cores)
+# 
+# all_cores = parallel::detectCores(logical = FALSE)
+# doParallel::registerDoParallel(cores = all_cores)
 
 churn_data = fread("churn_data.csv") %>% as_tibble()
 ```
@@ -262,7 +262,8 @@ We can check the result of our base model by using the function `extract_fit_par
 churn_fit %>% 
   extract_fit_parsnip() %>% 
   tidy() %>% 
-  filter(p.value < 0.05)
+  filter(p.value < 0.05) %>% 
+  view()
 ```
 
 ## Data Prediction and Evaluation
