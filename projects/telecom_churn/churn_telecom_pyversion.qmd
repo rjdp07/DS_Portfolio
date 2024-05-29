@@ -37,6 +37,11 @@ from xgboost import XGBClassifier
 from sklearn.model_selection import GridSearchCV
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import roc_auc_score, roc_curve
+from imblearn.under_sampling import RandomUnderSampler
+from imblearn.over_sampling import RandomOverSampler
+from imblearn.over_sampling import SMOTE
+from sklearn.metrics import confusion_matrix, classification_report
+
 ```
 
 ```{python}
@@ -51,6 +56,11 @@ churn_data = pd.read_csv("churn_data.csv")
 ```{python}
 
 churn_data.describe
+```
+
+```{python}
+
+churn_data['Churn'].value_counts(sort = True)
 ```
 
 ```{python}
@@ -277,6 +287,60 @@ y = churn_data_model['Churn']
 y.head()
 ```
 
+```{python}
+plt.clf()
+y.value_counts().plot.pie(autopct = '%.2f')
+plt.show()
+```
+
+From the plot above, we can see how imbalance our data set is. We only have 14.49% instance of customers that churn while 85% are the customers that did not churn. Since our focus is to effectively identify customers who are most likely to churn, we need to treat this imbalance.
+
+### Random Under-sampling
+
+Random Under-sampling is an approach where in we reduce the percentage of the majority class for us to have a class-balanced data set.
+
+```{python}
+
+rus = RandomUnderSampler(sampling_strategy = 1) # Float
+X_res, y_res = rus.fit_resample(X,y)
+
+plt.clf()
+ax = y_res.value_counts().plot.pie(autopct = '%.2f')
+_ = ax.set_title('Under-sampling')
+plt.show()
+```
+
+```{python}
+y_res.value_counts()
+```
+
+### Random Over-sampling
+
+On the other hand, Random Over-sampling is an approach where we add more samples to the minority class.
+
+```{python}
+ros = RandomOverSampler(sampling_strategy = 'not majority')
+X_res_ros, y_res_ros = ros.fit_resample(X,y)
+
+plt.clf()
+ax = y_res_ros.value_counts().plot.pie(autopct = '%.2f')
+_ = ax.set_title('Over-sampling')
+plt.show()
+```
+
+```{python}
+
+y_res_ros.value_counts()
+```
+
+### SMOTE
+
+```{python}
+
+
+
+```
+
 Apply pre-processing for Predictor variable
 
 ```{python}
@@ -297,6 +361,12 @@ preprocessor = ColumnTransformer(
 
 X = preprocessor.fit_transform(X)
 
+```
+
+```{python}
+
+sm = SMOTE(random_state=42)
+X_smote, y_smote = sm.fit_resample(X, y)
 ```
 
 Now that we are done with pre-processing, let's move to splitting our test and train data set.
@@ -322,13 +392,18 @@ Try predicting using the model
 
 ```{python}
 
-logistic_predictions = model.predict_proba(X_test)[:,1]
+logistic_predictions = model.predict(X_test)
 ```
 
 ```{python}
 
 accuracy = accuracy_score(y_test,logistic_predictions)
 accuracy
+```
+
+```{python}
+
+print(classification_report(y_test,logistic_predictions))
 ```
 
 We achieved an accuracy of 87% for our logistic regression model. But we still need to check if our model is overfitted or underfitted.
@@ -349,7 +424,7 @@ Let's check ROC and AUC score to further evaluate our training model
 
 ```{python}
 
-auc = np.round(roc_auc_score(y_test,predictions),3)
+auc = np.round(roc_auc_score(y_test,logistic_predictions),3)
 print("AUC for our sample data is {}".format(auc))
 
 ```
@@ -361,5 +436,34 @@ Let's see what will our model performance if we use Decision Tree
 ```{python}
 
 clf = DecisionTreeClassifier()
-clf.fit
+clf.fit(X_train, y_train)
+
+dtree_prediction = clf.predict(X_test)
+dtree_accuracy = accuracy_score(y_test, dtree_prediction)
+dtree_accuracy 
+```
+
+Check performance if over or under fit
+
+```{python}
+
+scores_dtree = cross_val_score(clf, X_train, y_train, scoring = 'accuracy',cv = cv, n_jobs = -1)
+mean_score_dtree = np.mean(scores_dtree)
+confidence_interval_dtree = np.std(scores) * 2
+mean_score_dtree, confidence_interval_dtree
+```
+
+Check classification report
+
+```{python}
+
+print(classification_report(y_test,dtree_prediction))
+```
+
+Check AUC Score
+
+```{python}
+
+auc = np.round(roc_auc_score(y_test,dtree_prediction),3)
+print("AUC for our sample data is {}".format(auc))
 ```
